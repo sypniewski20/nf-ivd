@@ -1,0 +1,9 @@
+work/
+.nextflow/
+*.sif
+*.bam
+*.cram
+*.vcf
+*.vcf.gz
+*.tbi
+results/
