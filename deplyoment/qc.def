@@ -1,0 +1,59 @@
+Bootstrap: docker
+From: mambaorg/micromamba:1.5.8
+
+########################################################
+# FILES (build-time inputs)
+########################################################
+%files
+    environment-qc.yml /opt/build/environment-qc.yml
+    qc_lock.yml   /opt/build/qc_lock.yml
+
+########################################################
+# POST BUILD
+########################################################
+%post
+    set -e
+    cd /
+
+    export DEBIAN_FRONTEND=noninteractive
+    export MAMBA_ROOT_PREFIX=/opt/micromamba
+
+    apt-get update && apt-get install -y \
+        bash curl ca-certificates coreutils
+
+    mkdir -p /opt/envs /opt/build
+
+    ########################################################
+    # 1. INSTALL ENVIRONMENT (SOURCE OF TRUTH)
+    ########################################################
+    echo "[INFO] Installing QC environment from YAML"
+
+    micromamba create -y \
+        -p /opt/envs/qc \
+        -f /opt/build/environment-qc.yml
+
+    micromamba clean -a -y
+
+    ########################################################
+    # 2. OPTIONAL: LOCK FILE VALIDATION (AUDIT ONLY)
+    ########################################################
+    echo "[INFO] Verifying conda-lock (non-blocking)"
+
+    if command -v conda-lock >/dev/null 2>&1; then
+        conda-lock verify /opt/build/qc_lock.yml || \
+            echo "[WARN] QC lock drift detected"
+    else
+        echo "[WARN] conda-lock not installed, skipping verification"
+    fi
+
+########################################################
+# ENVIRONMENT
+########################################################
+%environment
+    export PATH=/opt/envs/qc/bin:$PATH
+
+########################################################
+# METADATA
+########################################################
+%labels
+    Purpose QC stack (fastqc/multiqc/mosdepth via micromamba + conda-lock audit)

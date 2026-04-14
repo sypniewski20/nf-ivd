@@ -1,0 +1,87 @@
+Bootstrap: docker
+From: mambaorg/micromamba:1.5.8
+
+########################################################
+# BUILD-TIME FILES
+########################################################
+%files
+    environment-core.yml /opt/build/environment-core.yml
+    core_lock.yml   /opt/build/core_lock.yml
+    environment-core.yml.sha256           /opt/build/environment-core.yml.sha256
+
+########################################################
+# POST BUILD
+########################################################
+%post
+    set -e
+    cd /
+
+    export DEBIAN_FRONTEND=noninteractive
+    export MAMBA_ROOT_PREFIX=/opt/micromamba
+
+    apt-get update && apt-get install -y \
+        bash curl wget unzip ca-certificates bzip2 \
+        coreutils
+
+    mkdir -p /opt/envs /opt/build
+
+    ########################################################
+    # 1. VERIFY environment.yml integrity (SOURCE OF TRUTH)
+    ########################################################
+    echo "[INFO] Verifying environment.yml SHA256"
+    cd /opt/build
+    sha256sum -c environment-core.yml.sha256
+
+    ########################################################
+    # 2. INSTALL ENVIRONMENT (REAL BUILD STEP)
+    ########################################################
+    echo "[INFO] Creating micromamba environment from environment.yml"
+
+    micromamba create -y \
+        -p /opt/envs/tools \
+        -f /opt/build/environment-core.yml
+
+    micromamba clean -a -y
+
+    ########################################################
+    # 3. VERIFY LOCK FILE AGAINST RESOLVED ENV (AUDIT ONLY)
+    ########################################################
+    echo "[INFO] Validating conda-lock consistency (non-blocking audit)"
+
+    if command -v conda-lock >/dev/null 2>&1; then
+        conda-lock verify /opt/build/core_lock.yml|| \
+            echo "[WARN] Lock file drift detected"
+    else
+        echo "[WARN] conda-lock not installed, skipping verification"
+    fi
+
+    ########################################################
+    # 4. GATK (external, SHA pinned)
+    ########################################################
+    GATK_VERSION=4.4.0.0
+    GATK_URL="https://github.com/broadinstitute/gatk/releases/download/${GATK_VERSION}/gatk-${GATK_VERSION}.zip"
+    GATK_SHA256="444600f7b38b46ad0b3606b7d40ce921e0ff1910a50165872f1c73c7c4a1a390"
+
+    mkdir -p /opt/tools/gatk
+    cd /opt/tools/gatk
+
+    wget -q -O gatk.zip "${GATK_URL}"
+    echo "${GATK_SHA256}  gatk.zip" | sha256sum -c -
+
+    unzip -q gatk.zip
+    rm -f gatk.zip
+
+    ln -s /opt/tools/gatk/gatk-${GATK_VERSION}/gatk /usr/local/bin/gatk
+
+########################################################
+# ENVIRONMENT
+########################################################
+%environment
+    export PATH=/opt/envs/tools/bin:$PATH
+    export PATH=/usr/local/bin:$PATH
+
+########################################################
+# METADATA
+########################################################
+%labels
+    Purpose Core alignment stack (micromamba env.yml + conda-lock audit + GATK external)

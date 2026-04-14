@@ -1,5 +1,6 @@
 work/
 .nextflow/
+*.fastq
 *.sif
 *.bam
 *.cram
