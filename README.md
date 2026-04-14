@@ -1,6 +1,6 @@
 # nf-ivd
 
-Reproducible genomics environment for clinical-style benchmarking workflows using:
+Reproducible genomics environment for benchmarking workflows using:
 
 - DRAGMAP-compatible GRCh38 reference
 - GIAB / SEQC2 / COLO829 benchmark datasets
@@ -10,7 +10,7 @@ Reproducible genomics environment for clinical-style benchmarking workflows usin
 
 ---
 
-# 🧬 Execution Model
+# Execution Model
 
 The system is structured into three deterministic layers:
 
@@ -20,13 +20,13 @@ ENVIRONMENT → DOWNLOAD → SNAPSHOT
 
 ````
 
-- **ENVIRONMENT**: builds tools + reference
-- **DOWNLOAD**: acquires datasets with integrity checks
-- **SNAPSHOT**: captures immutable run state for auditability
+- ENVIRONMENT: builds tools and reference assets
+- DOWNLOAD: acquires datasets with integrity checks
+- SNAPSHOT: captures immutable execution state for auditability
 
 ---
 
-# 🚀 Full Entry Points (IMPORTANT)
+# Full Entry Points
 
 ## 1. Full system bootstrap
 
@@ -34,7 +34,7 @@ ENVIRONMENT → DOWNLOAD → SNAPSHOT
 make all
 ````
 
-Runs full reproducible setup:
+Runs:
 
 * container build (core, qc, hap.py)
 * reference download + SHA256 verification
@@ -45,7 +45,7 @@ Runs full reproducible setup:
 
 ## 2. Environment setup only
 
-```bash
+```bash id="setup_cmd"
 make setup
 ```
 
@@ -53,14 +53,14 @@ Includes:
 
 * Singularity container builds
 * DRAGMAP-compatible reference download
-* reference SHA256 verification
+* reference verification using `reference_manifest.tsv`
 * audit directory initialization
 
 ---
 
 ## 3. Data download only
 
-```bash
+```bash id="download_cmd"
 make download
 ```
 
@@ -70,13 +70,13 @@ Includes:
 * direct HTTP/FTP dataset download
 * GIAB BED truth set download
 * SHA256 validation per file
-* resume-safe execution (ledger-based)
+* resume-safe execution using ledger files
 
 ---
 
 ## 4. Snapshot only
 
-```bash
+```bash id="snapshot_cmd"
 make snapshot
 ```
 
@@ -90,12 +90,12 @@ Contains:
 
 * timestamp
 * container identifiers
-* reference linkage
+* reference manifest linkage
 * execution state snapshot
 
 ---
 
-# 📦 Data Model
+# Data Model
 
 ## Reads
 
@@ -120,42 +120,47 @@ Includes:
 
 ---
 
-# 🧬 Reference Genome
+# Reference Genome
 
 Based on:
 
 * GRCh38 (Broad / DRAGMAP compatible)
 * pinned via `reference_manifest.tsv`
-* SHA256-verified downloads from GCS
+* SHA256 verification against manifest
 
 Core files:
 
-* FASTA
-* FAI index
-* dictionary (.dict)
-* STR metadata (.str)
+* Homo_sapiens_assembly38.fasta
+* Homo_sapiens_assembly38.fasta.fai
+* Homo_sapiens_assembly38.dict
+* Homo_sapiens_assembly38.str
 
 ---
 
-# 📁 Output Structure
+# Output Structure
 
 ```
-reference/         # immutable reference assets
-data/              # downloaded datasets
-data/_ledger.json  # download tracking
-data/_run_snapshot.json  # run audit snapshot
+reference/                  # immutable reference assets
+data/                       # downloaded datasets
+reference_manifest.tsv     # reference file registry
+giab_bed_manifest.csv      # BED registry
+manifest.csv              # read dataset registry
+
+data/_ledger.json         # download tracking
+data/_run_snapshot.json   # run audit snapshot
 ```
 
 ---
 
-# 📟 Command Reference
+# Command Reference
 
-| Command         | Purpose                 |
-| --------------- | ----------------------- |
-| `make all`      | Full system bootstrap   |
-| `make setup`    | Build environment only  |
-| `make download` | Acquire datasets        |
-| `make snapshot` | Generate audit snapshot |
-| `make clean`    | Reset workspace         |
+| Command       | Purpose                 |
+| ------------- | ----------------------- |
+| make all      | Full system bootstrap   |
+| make setup    | Build environment only  |
+| make download | Acquire datasets        |
+| make snapshot | Generate audit snapshot |
+| make clean    | Reset workspace         |
 
 ```
+
