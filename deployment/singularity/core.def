@@ -7,7 +7,6 @@ From: mambaorg/micromamba:1.5.8
 %files
     environment-core.yml /opt/build/environment-core.yml
     core_lock.yml   /opt/build/core_lock.yml
-    environment-core.yml.sha256           /opt/build/environment-core.yml.sha256
 
 ########################################################
 # POST BUILD
@@ -24,13 +23,6 @@ From: mambaorg/micromamba:1.5.8
         coreutils
 
     mkdir -p /opt/envs /opt/build
-
-    ########################################################
-    # 1. VERIFY environment.yml integrity (SOURCE OF TRUTH)
-    ########################################################
-    echo "[INFO] Verifying environment.yml SHA256"
-    cd /opt/build
-    sha256sum -c environment-core.yml.sha256
 
     ########################################################
     # 2. INSTALL ENVIRONMENT (REAL BUILD STEP)

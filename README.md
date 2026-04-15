@@ -1,86 +1,103 @@
 # nf-ivd
 
-Reproducible genomics environment for benchmarking workflows using:
+Clinical-grade environment bootstrap for GIAB benchmarking and variant calling validation.
 
-- DRAGMAP-compatible GRCh38 reference
-- GIAB / SEQC2 / COLO829 benchmark datasets
-- SHA256-verified ingestion layer
-- Singularity containerized tools
-- Run snapshot audit layer
+This repository **does not run the pipeline yet**.
+It builds a **fully reproducible, auditable environment** in which the pipeline will run.
+
+The goal is to guarantee:
+
+* Reproducible containers
+* Verified reference genome
+* Audited data acquisition (reads and BEDs)
+* Snapshot of environment state for traceability
 
 ---
 
-# Execution Model
-
-The system is structured into three deterministic layers:
+## Repository Structure
 
 ```
-
-ENVIRONMENT → DOWNLOAD → SNAPSHOT
-
-````
-
-- ENVIRONMENT: builds tools and reference assets
-- DOWNLOAD: acquires datasets with integrity checks
-- SNAPSHOT: captures immutable execution state for auditability
+.
+├── Makefile
+├── core.def
+├── qc.def
+├── happi.def
+├── fasta_manifest.tsv
+├── manifest.csv
+├── giab_bed_manifest.csv
+├── scripts/
+│   ├── download_reads.R
+│   ├── download_beds.R
+│   ├── utils.R
+│   └── init.R
+```
 
 ---
 
-# Full Entry Points
+## Entry Points (Important)
 
-## 1. Full system bootstrap
+These are the only commands you need.
 
-```bash
+### 1. Full environment bootstrap
+
+```
 make all
-````
+```
 
-Runs:
+This performs:
 
-* container build (core, qc, hap.py)
-* reference download + SHA256 verification
-* dataset download (reads + BEDs)
-* run snapshot generation
+1. Build containers (core, qc, hap.py)
+2. Download and verify reference genome
+3. Initialize audit layer
+4. Download reads and BED files
+5. Create environment snapshot
 
 ---
 
-## 2. Environment setup only
+### 2. Build only environment (no data)
 
-```bash id="setup_cmd"
+```
 make setup
 ```
 
-Includes:
+Builds:
 
-* Singularity container builds
-* DRAGMAP-compatible reference download
-* reference verification using `reference_manifest.tsv`
-* audit directory initialization
+* `core.sif`
+* `qc.sif`
+* `happi.sif` (hap.py pinned by digest)
+* Downloads and verifies reference from `fasta_manifest.tsv`
+* Initializes audit ledger
 
 ---
 
-## 3. Data download only
+### 3. Download all data (reads + beds)
 
-```bash id="download_cmd"
+```
 make download
 ```
 
-Includes:
+Uses:
 
-* SRA / FASTQ acquisition
-* direct HTTP/FTP dataset download
-* GIAB BED truth set download
-* SHA256 validation per file
-* resume-safe execution using ledger files
+* `manifest.csv` for reads
+* `giab_bed_manifest.csv` for BED files
+
+Each file is:
+
+* Downloaded
+* SHA256 verified
+* Written to ledger
+
+Safe to re-run. Already completed datasets are skipped.
 
 ---
 
-## 4. Snapshot only
+### 4. Snapshot current environment state
 
-```bash id="snapshot_cmd"
+```
 make snapshot
 ```
 
-Generates:
+Creates:
 
 ```
 data/_run_snapshot.json
@@ -88,79 +105,96 @@ data/_run_snapshot.json
 
 Contains:
 
-* timestamp
-* container identifiers
-* reference manifest linkage
-* execution state snapshot
+* Timestamp
+* Reference manifest used
+* Containers used
+
+This is the clinical traceability anchor.
 
 ---
 
-# Data Model
+## Reference Genome
 
-## Reads
-
-Supported:
-
-* SRA (SRR / ERR)
-* direct FASTQ download
-
-Datasets:
-
-* GIAB NA12878 / HG002
-* SEQC2 tumor/normal
-* COLO829 melanoma benchmark
-
-## BEDs
-
-Includes:
-
-* callable regions
-* excluded regions
-* stratification BEDs (GIAB)
-
----
-
-# Reference Genome
-
-Based on:
-
-* GRCh38 (Broad / DRAGMAP compatible)
-* pinned via `reference_manifest.tsv`
-* SHA256 verification against manifest
-
-Core files:
-
-* Homo_sapiens_assembly38.fasta
-* Homo_sapiens_assembly38.fasta.fai
-* Homo_sapiens_assembly38.dict
-* Homo_sapiens_assembly38.str
-
----
-
-# Output Structure
+Reference files are defined in:
 
 ```
-reference/                  # immutable reference assets
-data/                       # downloaded datasets
-reference_manifest.tsv     # reference file registry
-giab_bed_manifest.csv      # BED registry
-manifest.csv              # read dataset registry
-
-data/_ledger.json         # download tracking
-data/_run_snapshot.json   # run audit snapshot
+fasta_manifest.tsv
 ```
+
+Each entry contains:
+
+```
+file<TAB>sha256
+```
+
+Files are pulled from Broad GCS and verified before use.
 
 ---
 
-# Command Reference
+## Containers
 
-| Command       | Purpose                 |
-| ------------- | ----------------------- |
-| make all      | Full system bootstrap   |
-| make setup    | Build environment only  |
-| make download | Acquire datasets        |
-| make snapshot | Generate audit snapshot |
-| make clean    | Reset workspace         |
+| Container | Source                      | Purpose                      |
+| --------- | --------------------------- | ---------------------------- |
+| core.sif  | core.def                    | aligners, samtools, bcftools |
+| qc.sif    | qc.def                      | QC and metrics tools         |
+| happi.sif | mgibio/hap.py pinned digest | GIAB benchmarking            |
+
+`hap.py` is built from a **pinned Docker registry digest**, not a tag.
+
+---
+
+## Data Manifests
+
+### Reads
 
 ```
+manifest.csv
+```
 
+Columns:
+
+* dataset
+* accession (SRR/ERR) or
+* source_url (http/ftp)
+
+### BEDs
+
+```
+giab_bed_manifest.csv
+```
+
+Columns:
+
+* dataset
+* bed_type
+* source_url
+
+---
+
+## Audit Layer
+
+Every downloaded file gets:
+
+* SHA256 computed
+* Entry written into:
+
+```
+data/_ledger.json
+```
+
+This file is append-only and never overwritten.
+
+---
+
+## Cleaning
+
+```
+make clean
+```
+
+Removes:
+
+* `fasta/`
+* `data/`
+* all `.sif` files
+* inspect metadata

@@ -1,7 +1,0 @@
-dataset,sample,platform,accession_type,accession,source_url,truth_set,notes
-GIAB_germline_primary,NA12878,ILLUMINA,SRA,ERR194147,https://ftp-trace.ncbi.nlm.nih.gov/giab/ftp/data/NA12878/,GIAB_v4.2.1,CEU benchmark sample
-GIAB_germline_secondary,HG002,ILLUMINA,SRA,SRR6816786,https://ftp-trace.ncbi.nlm.nih.gov/giab/ftp/data/AshkenazimTrio/HG002/,GIAB_v4.2.1,Trio son sample
-SEQC2_somatic_primary,HCC1395_tumor,ILLUMINA,SRA,SRR7890884,https://ftp.ncbi.nlm.nih.gov/dbGaP/studies/phs001628/,SEQC2_v1.2,Tumor/normal pair
-SEQC2_somatic_normal,HCC1395_normal,ILLUMINA,SRA,SRR7890885,https://ftp.ncbi.nlm.nih.gov/dbGaP/studies/phs001628/,SEQC2_v1.2,Matched normal
-COLO829_tumor,COLO829,ILLUMINA,ENA,SRR3119247,https://www.ebi.ac.uk/ena/browser/view/PRJEB23084,COLO829_consensus,Melanoma benchmark
-COLO829_normal,COLO829BL,ILLUMINA,ENA,SRR3119248,https://www.ebi.ac.uk/ena/browser/view/PRJEB23084,COLO829_consensus,Matched normal

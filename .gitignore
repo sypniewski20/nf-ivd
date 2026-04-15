@@ -1,10 +1,9 @@
 work/
 .nextflow/
-*.fastq
-*.sif
-*.bam
-*.cram
-*.vcf
-*.vcf.gz
-*.tbi
+deployment/reference
+deployment/singularity/*.sif
 results/
+.Rhistory
+.RData
+.Rproj.user/
+*.Rproj

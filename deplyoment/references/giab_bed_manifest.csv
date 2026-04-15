@@ -1,7 +1,0 @@
-dataset,bed_type,accession,source_url,notes
-NA12878,HIGH_CONFIDENCE,,https://ftp-trace.ncbi.nlm.nih.gov/giab/ftp/data/NA12878/analysis/Union/GRCh38/,High confidence callable regions (GIAB v4.2.1)
-NA12878,EXCLUDED,,https://ftp-trace.ncbi.nlm.nih.gov/giab/ftp/data/NA12878/analysis/Union/GRCh38/,Excluded/problematic regions
-NA12878,STRATIFICATION,,https://ftp-trace.ncbi.nlm.nih.gov/giab/ftp/data/NA12878/stratification/,Stratified benchmarking BEDs
-HG002,HIGH_CONFIDENCE,,https://ftp-trace.ncbi.nlm.nih.gov/giab/ftp/data/AshkenazimTrio/HG002/analysis/,HG002 callable regions
-HG002,EXCLUDED,,https://ftp-trace.ncbi.nlm.nih.gov/giab/ftp/data/AshkenazimTrio/HG002/analysis/,HG002 excluded regions
-HG002,STRATIFICATION,,https://ftp-trace.ncbi.nlm.nih.gov/giab/ftp/data/AshkenazimTrio/HG002/stratification/,HG002 stratification BEDs

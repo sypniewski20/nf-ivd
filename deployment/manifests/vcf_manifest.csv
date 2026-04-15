@@ -1,0 +1,14 @@
+category,file,md5sum
+GIAB,https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/NA12878_HG001/NISTv4.2.1/GRCh38/HG001_GRCh38_1_22_v4.2.1_benchmark.vcf.gz,5d9b3d8b45af5ce1cba1d17e8d630539
+GIAB,https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/NA12878_HG001/NISTv4.2.1/GRCh38/HG001_GRCh38_1_22_v4.2.1_benchmark.vcf.gz.tbi,08cc1a9f7bbaae1b6e33afb5bb3de471
+GIAB,https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/NA12878_HG001/NISTv4.2.1/GRCh38/HG001_GRCh38_1_22_v4.2.1_benchmark.bed,1f2abc8f84b8e825e868c9a1e2b6afd9
+GIAB,https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/AshkenazimTrio/HG002_NA24385_son/latest/GRCh38/HG002_GRCh38_1_22_v4.2.1_benchmark.vcf.gz,9e8365f759ec5e41b3e8c2f8e0ae00f4
+GIAB,https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/AshkenazimTrio/HG002_NA24385_son/latest/GRCh38/HG002_GRCh38_1_22_v4.2.1_benchmark.vcf.gz.tbi,4b2468a9b9b77d91cd8bc1db5be4f3ce
+GIAB,https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/AshkenazimTrio/HG002_NA24385_son/latest/GRCh38/HG002_GRCh38_1_22_v4.2.1_benchmark.bed,0c9d47cf2fe3b6449c03b0d1e2f8b6aa
+Somatic,https://ftp-trace.ncbi.nlm.nih.gov/seqc2/sSNV.MSDUKT.superSet.v1.2.vcf.gz,
+Somatic,https://ftp-trace.ncbi.nlm.nih.gov/seqc2/sSNV.MSDUKT.superSet.v1.2.vcf.gz.tbi,
+Somatic,https://ftp-trace.ncbi.nlm.nih.gov/seqc2/sINDEL.MDKT.superSet.v1.2.vcf.gz,
+Somatic,https://ftp-trace.ncbi.nlm.nih.gov/seqc2/sINDEL.MDKT.superSet.v1.2.vcf.gz.tbi,
+Somatic,https://ftp-trace.ncbi.nlm.nih.gov/seqc2/High-Confidence_Regions_v1.2.bed,
+Somatic,https://ftp-trace.ncbi.nlm.nih.gov/seqc2/high-confidence_sSNV_in_HC_regions_v1.2.vcf.gz,
+Somatic,https://ftp-trace.ncbi.nl.nih.gov/seqc2/high-confidence_sINDEL_in_HC_regions_v1.2.vcf.gz

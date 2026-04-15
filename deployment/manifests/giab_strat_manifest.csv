@@ -1,0 +1,7 @@
+dataset,url,md5
+GIAB_Mappability,https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/genome-stratifications/v3.5/GRCh38@all/Mappability/GRCh38_lowmappabilityall.bed.gz,7bd552702455fca618d245a61bc94fb7
+GIAB_SegmentalDuplications,https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/genome-stratifications/v3.5/GRCh38@all/SegmentalDuplications/GRCh38_segdups.bed.gz,72ec3f7db18ef9318c64b1df271703fe
+GIAB_SegmentalDuplications,https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/genome-stratifications/v3.5/GRCh38@all/SegmentalDuplications/GRCh38_notinsegdups.bed.gz,cb68fc5bed55a446d9d3dbadbef9d735
+GIAB_LowComplexity,https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/genome-stratifications/v3.5/GRCh38@all/LowComplexity/GRCh38_AllTandemRepeats.bed.gz,d27d2b4e43e46a724da4934333cf0367
+GIAB_Union,https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/genome-stratifications/v3.5/GRCh38@all/Union/GRCh38_alldifficultregions.bed.gz,db0244b142a6e50053889bfe987cfcb9
+GIAB_GCcontent,https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/genome-stratifications/v3.5/GRCh38@all/GCcontent/GRCh38_gc15_slop50.bed.gz,dc95def3a3a312ad4df970ff4e9d0928
