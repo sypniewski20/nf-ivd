@@ -2,15 +2,15 @@ process DRAGMAP_BAM {
 	publishDir "${params.outfolder}/${params.runID}/BAM/", mode: 'copy', overwrite: true
 	tag "${sample}"
 	label 'gatk'
-	label 'mem_64GB'
-	label 'core_16'
+	label 'large'
 	input:
 		tuple val(sample), val(LB), path(read_1), path(read_2)
 		path(fasta_dir)
 		path(fasta)
 	output:
-		tuple val(sample), path("${sample}_sorted.bam"), path("${sample}_sorted.bam.bai"), path("${sample}_sorted.bam.md5"), emit: ch_bam
+		tuple val(sample), path("${sample}_sorted.bam"), path("${sample}_sorted.bam.bai"), emit: ch_bam
 		tuple val(sample), path("${sample}_sorted.flagstat"), emit: ch_flagstat
+		tuple val(sample), path("${sample}_sorted.bam.md5"), emit: ch_md5
 	script:
 		"""
 

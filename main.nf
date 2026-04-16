@@ -7,7 +7,7 @@ include { fastq_QC_workflow }      from './subworkflows/qc.nf'
 include { mapping_workflow }       from './subworkflows/mapping.nf'
 include { multiqc }                from './subworkflows/multiqc.nf'
 
-include { HC_workflow }     from './subworkflows/HC.nf'
+include { hc_workflow }     from './subworkflows/HC.nf'
 include { tumor_only_workflow }   from './subworkflows/tumor_only.nf'
 include { tumor_normal_workflow } from './subworkflows/tumor_normal.nf'
 include { calibration_workflow }  from './subworkflows/calibration.nf'
@@ -43,7 +43,7 @@ if (params.input_type == 'fastq') {
 switch(params.run_mode) {
 
     case 'HC':
-        result = HC_workflow(ch_bam, params)
+        result = hc_workflow(ch_bam, params)
         break
 
     case 'tumor_only':

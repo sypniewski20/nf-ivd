@@ -50,7 +50,7 @@ From: mambaorg/micromamba:1.5.8
     ########################################################
     # 4. GATK (external, SHA pinned)
     ########################################################
-    GATK_VERSION=4.4.0.0
+    GATK_VERSION=4.6.1.0
     GATK_URL="https://github.com/broadinstitute/gatk/releases/download/${GATK_VERSION}/gatk-${GATK_VERSION}.zip"
     GATK_SHA256="444600f7b38b46ad0b3606b7d40ce921e0ff1910a50165872f1c73c7c4a1a390"
 

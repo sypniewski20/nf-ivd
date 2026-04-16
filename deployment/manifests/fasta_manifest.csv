@@ -3,3 +3,4 @@ fasta,https://storage.googleapis.com/gcp-public-data--broad-references/hg38/v0/H
 fai,https://storage.googleapis.com/gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai,f76371b113734a56cde236bc0372de0a
 dict,https://storage.googleapis.com/gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict,3884c62eb0e53fa92459ed9bff133ae6
 str_table,https://storage.googleapis.com/gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.str,dfbd3c9d92f1c73cd10c37db7be5ef27
+intervals,https://storage.googleapis.com/gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.wgs_calling_regions.hg38.interval_list,1790be6605825971526fff7cb3232764

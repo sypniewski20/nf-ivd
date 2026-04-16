@@ -5,12 +5,6 @@ GIAB_HG003,https://ftp.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/Ashkenazim
 GIAB_HG003,https://ftp.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/AshkenazimTrio/HG003_NA24149_father/NISTv4.2.1/GRCh38/HG003_GRCh38_1_22_v4.2.1_benchmark_noinconsistent.bed,26f7a0a353c653e4e2979654586110b1
 GIAB_HG004,https://ftp.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/AshkenazimTrio/HG004_NA24143_mother/NISTv4.2.1/GRCh38/HG004_GRCh38_1_22_v4.2.1_benchmark.vcf.gz,6c3f7c0736de259d400826ac84922d44
 GIAB_HG004,https://ftp.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/AshkenazimTrio/HG004_NA24143_mother/NISTv4.2.1/GRCh38/HG004_GRCh38_1_22_v4.2.1_benchmark_noinconsistent.bed,38fcb13f53634c898c8e9aadcd0fe292
-GIAB_HG005,https://ftp.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/ChineseTrio/HG005_NA24631_son/NISTv4.2.1/GRCh38/HG005_GRCh38_1_22_v4.2.1_benchmark.vcf.gz,35fe853b7e8d979daa91033ed6863e98
-GIAB_HG005,https://ftp.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/ChineseTrio/HG005_NA24631_son/NISTv4.2.1/GRCh38/HG005_GRCh38_1_22_v4.2.1_benchmark.bed,f06ec2339592168a75ad4236b87cb2a3
-GIAB_HG006,https://ftp.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/ChineseTrio/HG006_NA24694_father/NISTv4.2.1/GRCh38/HG006_GRCh38_1_22_v4.2.1_benchmark.vcf.gz,d02b15294b232f96506dea2dd8d6d82d
-GIAB_HG006,https://ftp.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/ChineseTrio/HG006_NA24694_father/NISTv4.2.1/GRCh38/HG006_GRCh38_1_22_v4.2.1_benchmark.bed,4c189e07c6d746b61a12b2ef38a4eea2
-GIAB_HG007,https://ftp.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/ChineseTrio/HG007_NA24695_mother/NISTv4.2.1/GRCh38/HG007_GRCh38_1_22_v4.2.1_benchmark.vcf.gz,336f8cf6806521618779b6c5f4eadeb7
-GIAB_HG007,https://ftp.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/ChineseTrio/HG007_NA24695_mother/NISTv4.2.1/GRCh38/HG007_GRCh38_1_22_v4.2.1_benchmark.bed,6239fad8618396f9f6a269070fede44b
 SEQC2_HCC1395,https://ftp.ncbi.nlm.nih.gov/ReferenceSamples/seqc/Somatic_Mutation_WG/release/latest/high-confidence_sSNV_in_HC_regions_v1.2.1.vcf.gz,243c5795d7502a6dfb2e9b0431a17363
 SEQC2_HCC1395,https://ftp.ncbi.nlm.nih.gov/ReferenceSamples/seqc/Somatic_Mutation_WG/release/latest/high-confidence_sINDEL_in_HC_regions_v1.2.1.vcf.gz,74a02946f4d5f9f93629e2f56bb19726
 SEQC2_HCC1395,https://ftp.ncbi.nlm.nih.gov/ReferenceSamples/seqc/Somatic_Mutation_WG/release/latest/High-Confidence_Regions_v1.2.1.bed,a5947af8e340b0ab4ffcb208caa0c2c0

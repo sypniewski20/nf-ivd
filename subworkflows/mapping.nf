@@ -19,6 +19,7 @@ workflow mapping_workflow {
 
         bam      = DRAGMAP_BAM.out.ch_bam
         flagstat = DRAGMAP_BAM.out.ch_flagstat
+        md5      = DRAGMAP_BAM.out.ch_md5
 
         if (isWES) {
             MOSDEPTH_EXOME(bam, bed, fasta)
@@ -29,5 +30,6 @@ workflow mapping_workflow {
     emit:
         bam
         flagstat
+        ch_md5
         mosdepth = isWES ? MOSDEPTH_EXOME.out : MOSDEPTH.out
 }

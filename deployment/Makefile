@@ -11,6 +11,7 @@ TRUTH_DIR  := reference/truth
 READS_DIR  := reference/reads
 FASTA_DIR  := reference/fasta
 REF_DIR    := reference
+PON_DIR    := reference/pon
 OUTPUT_DIR := output
 LOG_DIR    := logs
 
@@ -34,7 +35,7 @@ HAPPY_SIF := singularity/happi.sif
 
 all: setup data
 
-setup: containers strat truth fasta
+setup: containers strat truth fasta pon
 
 # ── Containers ────────────────────────────────────────────────────────────────
 containers: $(CORE_SIF) $(QC_SIF) $(HAPPY_SIF)
@@ -58,9 +59,12 @@ truth:
 fasta:
 	$(RSCRIPT) scripts/download_and_verify.R --manifest $(FASTA_MANIFEST) --dir $(FASTA_DIR) --snapshot_dir $(FASTA_DIR)
 
+pon:
+	gsutil cp gs://gatk-best-practices/somatic-hg38/1000g_pon.hg38.vcf.gz* $(PON_DIR)/*
+
 # ── Reads (manual step — too large for default pipeline) ─────────────────────
 data:
-	scripts/sra_reads_download.sh $(READS_MANIFEST)
+	scripts/benchmark_fastq_download.sh
 
 # ── Clean ─────────────────────────────────────────────────────────────────────
 clean:
