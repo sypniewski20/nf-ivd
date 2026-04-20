@@ -9,7 +9,6 @@ include {
 workflow MANTA_WORKFLOW{
     take:
         ch_bam
-        ch_fasta
 
     main:
         ch_fasta = Channel.value([

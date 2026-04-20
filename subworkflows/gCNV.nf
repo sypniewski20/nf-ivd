@@ -13,14 +13,15 @@
 workflow gCNV_workflow {
     take:
         ch_bam
-        bed
-        ploidy_priors
     
     main:
         ch_fasta = Channel.value([
             file(params.fasta),
             file("${params.fasta}.fai")
             ])
+
+        bed = Channel.value(file(params.bed))
+        ploidy_priors = Channel.value(file(params.ploidy_priors))
 
         // 1. Preprocess Intervals
         preprocessed_intervals = PREPROCESS_INTERVALS(bed, ch_fasta)

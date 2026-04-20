@@ -6,11 +6,13 @@ nextflow.enable.dsl = 2
 // CLINICAL IVD GERMLINE PIPELINE
 // ============================================================
 
-include { Read_samplesheet }      from './modules/functions.nf'
+include { Read_samplesheet; Read_bam }      from './modules/functions.nf'
 include { dragmap_workflow }      from './subworkflows/mapping.nf' 
 include { fastq_QC_workflow; nist_streaming_QC_workflow; mosdepth_workflow }     from './subworkflows/qc.nf'
 include { multiqc_workflow }      from './subworkflows/multiqc.nf'
 include { hc_workflow }           from './subworkflows/HC.nf'
+include { manta_workflow }        from './subworkflows/manta.nf'
+include { gCNV_workflow }         from './subworkflows/gCNV.nf'
 include { germline_calibration_workflow }  from './subworkflows/calibration.nf'
 
 workflow {
@@ -62,33 +64,42 @@ workflow {
         ch_mosdepth      = mosdepth_results.ch_mosdepth
 
     } else if (params.input_type == 'bam') {
-        ch_bam = Read_bam_checkpoint(params.samplesheet)
+        ch_bam = Read_bam(params.samplesheet)
     }
 
-    // 2. ROUTING LAYER 
+    // 2. ROUTING LAYER
+
     ch_final_vcf = Channel.empty()
     ch_final_stats = Channel.empty()
 
-    switch(params.run_mode) {
-        case 'HC':
-            hc_results = hc_workflow(ch_bam)
-            ch_final_vcf = hc_results.hc_vcf
-            ch_final_stats = hc_results.stats
+    def run_modes = params.run_mode?.split(',')*.trim()
 
-            break
+    hc_results = null
 
-        case 'calibration':
-            
-            hc_results = hc_workflow(ch_bam)
+    if ('HC' in run_modes || 'calibration' in run_modes) {
+        hc_results = hc_workflow(ch_bam)
 
-            cal_results = germline_calibration_workflow(hc_results.hc_vcf)
-            // If calibration produces the benchmark VCF:
-            ch_final_vcf = cal_results.vcf 
-            ch_final_stats = cal_results.stats
-            break
+        if ('HC' in run_modes) {
+            ch_final_vcf = ch_final_vcf.mix(hc_results.hc_vcf)
+            ch_final_stats = ch_final_stats.mix(hc_results.stats)
+        }
+    }
 
-        default:
-            error "CRITICAL: Unknown run_mode: ${params.run_mode}."
+    if ('SV' in run_modes) {
+        manta_results = manta_workflow(ch_bam)
+        gcnv_results = gCNV_workflow(ch_bam)
+
+        ch_final_vcf = ch_final_vcf.mix(manta_results.vcf)
+        // optionally:
+        // ch_final_vcf = ch_final_vcf.mix(gcnv_results.vcf)
+    }
+
+    if ('calibration' in run_modes) {
+
+        cal_results = germline_calibration_workflow(hc_results.hc_vcf)
+
+        ch_final_vcf = ch_final_vcf.mix(cal_results.vcf)
+        ch_final_stats = ch_final_stats.mix(cal_results.stats)
     }
 
     // 3. FINAL QC & REPORTING
