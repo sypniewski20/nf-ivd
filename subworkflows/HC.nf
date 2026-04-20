@@ -1,138 +1,130 @@
+// ============================================================
+// GERMLINE VARIANT CALLING SUBWORKFLOW (WES + WGS SUPPORT)
+// ============================================================
+
 include {
     WES_CALIBRATE_DRAGSTR_MODEL;
-    WGS_CALIBRATE_DRAGSTR_MODEL
-
+    WGS_CALIBRATE_DRAGSTR_MODEL;
     WES_GVCF_HAPLOTYPE_CALLER;
-    WGS_GVCF_HAPLOTYPE_CALLER
-
-    WES_HAPLOTYPE_CALLER;
-    WGS_HAPLOTYPE_CALLER
-
-    WES_GENOTYPE_GVCF;
-    WGS_GENOTYPE_GVCF
-
+    WGS_GVCF_HAPLOTYPE_CALLER;
     WES_GENOMICSDB_IMPORT;
-    WGS_GENOMICSDB_IMPORT
-
-    HAPLOTYPE_CALLER_EXTRACT_GT;
-    GATHER_VCF;
-    VARIANT_FILTERING
+    WGS_GENOMICSDB_IMPORT;
+    WES_GENOTYPE_GVCF;
+    WGS_GENOTYPE_GVCF;
+    GATHER_VCFS;
+    VARIANT_FILTERING;
+    CALCULATE_POSTERIORS;
+    HAPLOTYPE_CALLER_EXTRACT_GT
 } from "../modules/HaplotypeCaller.nf"
-
-
-def DRAGEN_PROFILE = [
-    "--dragen-mode true",
-    "--native-pair-hmm-threads 1",
-    "--standard-min-confidence-threshold-for-calling 20"
-].join(" ")
-
 
 workflow hc_workflow {
 
     take:
-        ch_bam
-        params
+        ch_bam       // tuple(val(sample), path(bam), path(bai))
 
     main:
+        def isWES = (params.seq_type == 'WES')
+        
+        // 1. Prepare Reference Channels
 
-        def isWES = params.seq_type == 'WES'
+        ch_fasta= Channel.value([
+            file(params.fasta),
+            file("${params.fasta}.fai"),
+            file(params.fasta.replace(".fasta", ".dict").replace(".fa", ".dict")),
+            file(params.fasta.replace(".fasta", ".str").replace(".fa", ".str"))
 
+        ])
 
         // ============================================================
-        // 1. DRAGSTR CALIBRATION (MANDATORY FIRST STEP)
+        // STEP 1: DRAGSTR CALIBRATION
         // ============================================================
-
-        def dragstr_model = isWES
-            ? WES_CALIBRATE_DRAGSTR_MODEL(
-                ch_bam,
-                params.fasta,
-                params.str_table,
-                params.bed,
+        if (isWES) {
+            ch_dragstr = WES_CALIBRATE_DRAGSTR_MODEL(
+                ch_bam, 
+                ch_fasta, 
+                file(params.bed), 
                 params.interval_padding
-              )
-            : WGS_CALIBRATE_DRAGSTR_MODEL(
-                ch_bam,
-                params.fasta,
-                params.str_table
-              )
-
-
-        // ============================================================
-        // 2. GVCF CALLING (DRAGSTR DEPENDENT)
-        // ============================================================
-
-        def gvcf = isWES
-            ? WES_GVCF_HAPLOTYPE_CALLER(
-                ch_bam,
-                dragstr_model,
-                params.fasta,
-                params.interval_padding,
-                DRAGEN_PROFILE
-              )
-            : WGS_GVCF_HAPLOTYPE_CALLER(
-                ch_bam,
-                dragstr_model,
-                params.fasta,
-                DRAGEN_PROFILE
-              )
-
+            )
+        } else {
+            ch_dragstr = WGS_CALIBRATE_DRAGSTR_MODEL(
+                ch_bam, 
+                ch_fasta
+            )
+        }
 
         // ============================================================
-        // 3. GENOMICSDB
+        // STEP 2: CALLING (BRANCHING WES vs WGS)
+        // ============================================================
+        
+        if (isWES) {
+            // WES PATH: No Sharding (One job per sample)
+            ch_wes_input = ch_bam.join(ch_dragstr)
+            
+            ch_gvcfs_out = WES_GVCF_HAPLOTYPE_CALLER(
+                ch_wes_input,
+                ch_fasta,
+                file(params.bed),
+                params.interval_padding
+            )
+
+            // Prepare for Joint Genotyping
+            ch_db_input = ch_gvcfs_out.vcf
+                .map { sample, interval, vcf -> tuple(interval, vcf) }
+                .groupTuple()
+                .join(
+                    ch_gvcfs_out.tbi
+                        .map { sample, interval, tbi -> tuple(interval, tbi) }
+                        .groupTuple()
+                )
+
+            ch_db = WES_GENOMICSDB_IMPORT(ch_db_input, ch_fasta, file(params.bed))
+            ch_raw_vcf = WES_GENOTYPE_GVCF(ch_db, ch_fasta, file(params.bed))
+            
+            // For WES, "gathered" is simply the output of joint genotyping
+            ch_gathered = [vcf: ch_raw_vcf, tbi: ch_raw_vcf.map{ it.replace(".vcf.gz", ".vcf.gz.tbi") }]
+
+        } else {
+            // WGS PATH: Sharding enabled
+            ch_intervals = Channel.fromList(params.intervals_list)
+            ch_wgs_input = ch_bam.join(ch_dragstr).combine(ch_intervals)
+
+            ch_gvcfs_out = WGS_GVCF_HAPLOTYPE_CALLER(ch_wgs_input, ch_fasta)
+
+            ch_db_input = ch_gvcfs_out.vcf
+                .map { sample, interval, vcf -> tuple(interval, vcf) }
+                .groupTuple()
+                .join(
+                    ch_gvcfs_out.tbi
+                        .map { sample, interval, tbi -> tuple(interval, tbi) }
+                        .groupTuple()
+                )
+
+            ch_db = WGS_GENOMICSDB_IMPORT(ch_db_input, ch_fasta)
+            ch_shards = WGS_GENOTYPE_GVCF(ch_db, ch_fasta)
+
+            // Gather all WGS shards into one VCF
+            ch_gathered = GATHER_VCFS(ch_shards.collect())
+        }
+
+        // ============================================================
+        // STEP 3: FILTERING & REFINEMENT (Shared Logic)
         // ============================================================
 
-        def db = isWES
-            ? WES_GENOMICSDB_IMPORT(gvcf.vcf, gvcf.tbi, params.fasta, params.bed)
-            : WGS_GENOMICSDB_IMPORT(gvcf.vcf, gvcf.tbi, params.fasta)
+        ch_filtered = VARIANT_FILTERING(ch_gathered.vcf, ch_gathered.tbi, ch_fasta)
 
+        if (params.pedigree) {
+            ch_final = CALCULATE_POSTERIORS(
+                ch_filtered.vcf, 
+                ch_filtered.tbi, 
+                file(params.pedigree)
+            )
+        } else {
+            ch_final = ch_filtered
+        }
 
-        // ============================================================
-        // 4. GENOTYPING
-        // ============================================================
-
-        def genotype = isWES
-            ? WES_GENOTYPE_GVCF(db, params.fasta, params.bed)
-            : WGS_GENOTYPE_GVCF(db, params.fasta)
-
-
-        // ============================================================
-        // 5. DIRECT HC (CONSISTENCY LAYER)
-        // ============================================================
-
-        def hc = isWES
-            ? WES_HAPLOTYPE_CALLER(
-                ch_bam,
-                dragstr_model,
-                params.fasta,
-                params.interval_padding,
-                DRAGEN_PROFILE
-              )
-            : WGS_HAPLOTYPE_CALLER(
-                ch_bam,
-                dragstr_model,
-                params.fasta,
-                DRAGEN_PROFILE
-              )
-
-
-        // ============================================================
-        // 6. MERGE
-        // ============================================================
-
-        def merged = genotype.mix(hc.vcf).collect()
-
-
-        // ============================================================
-        // 7. POST PROCESSING
-        // ============================================================
-
-        def gathered = GATHER_VCF(merged)
-
-        def filtered = VARIANT_FILTERING(gathered, params.fasta)
-
-        HAPLOTYPE_CALLER_EXTRACT_GT(filtered)
-    
+        HAPLOTYPE_CALLER_EXTRACT_GT(ch_final.vcf)
 
     emit:
-        hc_vcf = filtered
+        hc_vcf = ch_final.vcf
+        stats = ch_final.stats
 }

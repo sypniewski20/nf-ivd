@@ -5,7 +5,7 @@ From: mambaorg/micromamba:1.5.8
 # BUILD-TIME FILES
 ########################################################
 %files
-    singularity/qc_lock.yml   /opt/build/qc_lock.yml
+    singularity/manta_lock.yml   /opt/build/manta_lock.yml
 
 %post
     set -e
@@ -27,7 +27,7 @@ From: mambaorg/micromamba:1.5.8
     ########################################################
     echo "[INFO] Installing environment from lock file"
 
-    conda-lock install -p /opt/envs/qc /opt/build/qc_lock.yml
+    conda-lock install -p /opt/envs/manta /opt/build/manta_lock.yml
 
     micromamba clean -a -y
 
@@ -35,7 +35,7 @@ From: mambaorg/micromamba:1.5.8
 # ENVIRONMENT
 ########################################################
 %environment
-    export PATH=/opt/envs/qc/bin:$PATH
+    export PATH=/opt/envs/manta/bin:$PATH
 
 ########################################################
 # METADATA

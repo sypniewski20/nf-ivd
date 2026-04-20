@@ -1,0 +1,4 @@
+#FamID  SampleID  PaternalID  MaternalID  Sex  Phenotype
+Trio01  HG002     HG003       HG004       1    2
+Trio01  HG003     0           0           1    1
+Trio01  HG004     0           0           2    1

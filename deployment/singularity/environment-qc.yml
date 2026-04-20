@@ -8,3 +8,6 @@ dependencies:
   - multiqc=1.21
   - mosdepth=0.3.13
   - python=3.11
+
+platforms:
+  - linux-64

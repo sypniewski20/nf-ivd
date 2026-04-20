@@ -5,11 +5,11 @@
 # available, unless you explicitly update the lock file.
 #
 # Install this environment as "YOURENV" with:
-#     conda-lock install -n YOURENV conda-lock.yml
+#     conda-lock install -n YOURENV qc_lock.yml
 # To update a single package to the latest version compatible with the version constraints in the source:
-#     conda-lock lock  --lockfile conda-lock.yml --update PACKAGE
+#     conda-lock lock  --lockfile qc_lock.yml --update PACKAGE
 # To re-solve the entire environment, e.g. after changing a version constraint in the source file:
-#     conda-lock -f environment-qc.yml --lockfile conda-lock.yml
+#     conda-lock -f environment-qc.yml --lockfile qc_lock.yml
 version: 1
 metadata:
   content_hash:
@@ -1110,17 +1110,17 @@ package:
   category: main
   optional: false
 - name: libpng
-  version: 1.6.57
+  version: 1.6.58
   manager: conda
   platform: linux-64
   dependencies:
     __glibc: '>=2.17,<3.0.a0'
     libgcc: '>=14'
     libzlib: '>=1.3.2,<2.0a0'
-  url: https://conda.anaconda.org/conda-forge/linux-64/libpng-1.6.57-h421ea60_0.conda
+  url: https://conda.anaconda.org/conda-forge/linux-64/libpng-1.6.58-h421ea60_0.conda
   hash:
-    md5: 06f225e6d8c549ad6c0201679828a882
-    sha256: 06323fb0a831440f0b72a53013182e1d4bb219e3ea958bb37af98b25dc0cf518
+    md5: eba48a68a1a2b9d3c0d9511548db85db
+    sha256: 377cfe037f3eeb3b1bf3ad333f724a64d32f315ee1958581fc671891d63d3f89
   category: main
   optional: false
 - name: libsqlite
@@ -1572,15 +1572,15 @@ package:
   category: main
   optional: false
 - name: packaging
-  version: '26.0'
+  version: '26.1'
   manager: conda
   platform: linux-64
   dependencies:
     python: ''
-  url: https://conda.anaconda.org/conda-forge/noarch/packaging-26.0-pyhcf101f3_0.conda
+  url: https://conda.anaconda.org/conda-forge/noarch/packaging-26.1-pyhc364b38_0.conda
   hash:
-    md5: b76541e68fea4d511b1ac46a28dcd2c6
-    sha256: c1fc0f953048f743385d31c468b4a678b3ad20caffdeaa94bed85ba63049fd58
+    md5: b8ae38639d323d808da535fb71e31be8
+    sha256: 171d977bc977fd80f2a05de3d4b7d571c4ec3cdea436ed364e5cd50547c50881
   category: main
   optional: false
 - name: pcre2
@@ -1944,7 +1944,7 @@ package:
   category: main
   optional: false
 - name: simplejson
-  version: 3.20.2
+  version: 4.0.1
   manager: conda
   platform: linux-64
   dependencies:
@@ -1952,10 +1952,10 @@ package:
     libgcc: '>=14'
     python: '>=3.11,<3.12.0a0'
     python_abi: 3.11.*
-  url: https://conda.anaconda.org/conda-forge/linux-64/simplejson-3.20.2-py311h49ec1c0_1.conda
+  url: https://conda.anaconda.org/conda-forge/linux-64/simplejson-4.0.1-py311h49ec1c0_0.conda
   hash:
-    md5: 2d61d44d98dca57a36ed0e3b097acae4
-    sha256: 780bd00498e526593d0f02657b902a8e8381a9c2729e02ec4774d426eb9eb7bc
+    md5: d8edc303082d2c818592a891af405b20
+    sha256: 18a1f287603e3d25aaa21b637c7e3076704ab2990939efb567e6f95d18ac2f9c
   category: main
   optional: false
 - name: six

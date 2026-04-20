@@ -1,74 +1,102 @@
+#!/usr/bin/env nextflow
 
-include { Read_samplesheet }       from './modules/functions.nf'
-include { Read_bam_checkpoint }    from './modules/functions.nf'
+nextflow.enable.dsl = 2
 
-include { preprocessing_workflow } from './subworkflows/preprocessing.nf'
-include { fastq_QC_workflow }      from './subworkflows/qc.nf'
-include { mapping_workflow }       from './subworkflows/mapping.nf'
-include { multiqc }                from './subworkflows/multiqc.nf'
+// ============================================================
+// CLINICAL IVD GERMLINE PIPELINE
+// ============================================================
 
-include { hc_workflow }     from './subworkflows/HC.nf'
-include { tumor_only_workflow }   from './subworkflows/tumor_only.nf'
-include { tumor_normal_workflow } from './subworkflows/tumor_normal.nf'
-include { calibration_workflow }  from './subworkflows/calibration.nf'
+include { Read_samplesheet }      from './modules/functions.nf'
+include { dragmap_workflow }      from './subworkflows/mapping.nf' 
+include { fastq_QC_workflow; nist_streaming_QC_workflow; mosdepth_workflow }     from './subworkflows/qc.nf'
+include { multiqc_workflow }      from './subworkflows/multiqc.nf'
+include { hc_workflow }           from './subworkflows/HC.nf'
+include { germline_calibration_workflow }  from './subworkflows/calibration.nf'
 
-// =========================
-// INPUT LAYER
-// =========================
-if (params.input_type == 'fastq') {
+workflow {
 
-    ch_fq = Read_samplesheet(params.samplesheet)
+// 1. INPUT LAYER
+    ch_fastqc_reports = Channel.empty()
+    ch_mapping_stats  = Channel.empty()
+    ch_mosdepth       = Channel.empty()
+    ch_bam            = Channel.empty()
 
-    qc = fastq_QC_workflow(ch_fq)
+    if (params.input_type == 'fastq') {
+        
+        // --- NEW LOGIC FOR CALIBRATION / STREAMING MODE ---
+        if (params.run_mode == 'calibration') {
+            // 1. Parse the NIST-style samplesheet (URLs + MD5 as RGID)
+            ch_raw_stream = Read_samplesheet(params.samplesheet)
 
-    ch_bam = mapping_workflow(
-        qc.fastq,
-        params.fasta_dir,
-        params.fasta,
-        params.bed
-    )
+            // 2. Stream through FASTP (Input: URLs -> Output: Local Filtered Chunks)
+            nist_streaming_QC_workflow(ch_raw_stream)
 
-} else if (params.input_type == 'bam') {
+            // 3. Group all MD5-tagged chunks by NIST_SAMPLE_NAME (HG002, etc.)
+            // Output of nist_streaming_QC_workflow: [RGSM, RGID, RGLB, RGPL, R1_file, R2_file]
+            ch_grouped_to_map = nist_streaming_QC_workflow.out.fastq
+                .groupTuple(by: 0) 
 
-    ch_bam = Read_bam_checkpoint(params.samplesheet)
-    qc = null
+            // 4. Align grouped chunks into single Sample BAMs
+            mapping_results = dragmap_workflow(ch_grouped_to_map)
+            
+            // Collect QC from streaming fastp
+            qc_results = nist_streaming_QC_workflow.out.fastp
 
-} else {
-    error "Unknown input_type: ${params.input_type}"
-}
+        } else {
+            // --- STANDARD LOCAL FASTQ MODE ---
+            ch_fq = Read_samplesheet(params.samplesheet)
+            ch_fq_qc = fastq_QC_workflow(ch_fq)
 
-// =========================
-// ROUTING LAYER (RUN MODE)
-// =========================
-switch(params.run_mode) {
+            filtered_fq = ch_fq_qc.fastq
+            qc_results = ch_fq_qc.fastp
+            fastqc_reports = ch_fq_qc.fastqc
 
-    case 'HC':
-        result = hc_workflow(ch_bam, params)
-        break
+            mapping_results = dragmap_workflow(filtered_fq)
+        }
 
-    case 'tumor_only':
-        result = tumor_only_workflow(ch_bam, params)
-        break
+        // --- COMMON POST-MAPPING LAYER ---
+        mosdepth_results = mosdepth_workflow(mapping_results.ch_bam)
+        
+        ch_bam           = mapping_results.ch_bam
+        ch_mapping_stats = mapping_results.ch_flagstat
+        ch_mosdepth      = mosdepth_results.ch_mosdepth
 
-    case 'tumor_normal':
-        result = tumor_normal_workflow(ch_bam, params)
-        break
+    } else if (params.input_type == 'bam') {
+        ch_bam = Read_bam_checkpoint(params.samplesheet)
+    }
 
-    case 'calibration':
-        result = calibration_workflow(ch_bam, params)
-        break
+    // 2. ROUTING LAYER 
+    ch_final_vcf = Channel.empty()
+    ch_final_stats = Channel.empty()
 
-    default:
-        error "Unknown run_mode: ${params.run_mode}"
-}
+    switch(params.run_mode) {
+        case 'HC':
+            hc_results = hc_workflow(ch_bam)
+            ch_final_vcf = hc_results.hc_vcf
+            ch_final_stats = hc_results.stats
 
-// =========================
-// FINAL QC
-// =========================
-if (qc != null) {
-    multiqc(
-        qc.fastqc,
-        result.flagstat,
-        result.mosdepth
+            break
+
+        case 'calibration':
+            
+            hc_results = hc_workflow(ch_bam)
+
+            cal_results = germline_calibration_workflow(hc_results.hc_vcf)
+            // If calibration produces the benchmark VCF:
+            ch_final_vcf = cal_results.vcf 
+            ch_final_stats = cal_results.stats
+            break
+
+        default:
+            error "CRITICAL: Unknown run_mode: ${params.run_mode}."
+    }
+
+    // 3. FINAL QC & REPORTING
+    // We mix the mapping stats with any tool-specific stats
+    multiqc_workflow(
+        ch_fastqc_reports.collect().ifEmpty([]),
+        ch_mapping_stats.collect().ifEmpty([]), 
+        ch_mosdepth.collect().ifEmpty([]),
+        ch_final_stats.collect().ifEmpty([])
     )
 }

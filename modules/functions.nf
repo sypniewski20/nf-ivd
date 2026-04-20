@@ -1,17 +1,21 @@
 def Read_samplesheet(samplesheet) {
-
-    Channel
+    // We return the channel object so main.nf can receive it
+    return Channel
         .fromPath(samplesheet)
         .splitCsv(header: true, sep: ',')
         .map { row ->
-            [
-                row.sampleID,
-                file(row.R1, checkIfExists: true),
-                file(row.R2, checkIfExists: true),
-                [lb: row.LB ?: null]
-            ]
+            // Use tuple for clarity in DSL2
+            tuple(
+                row.SM,
+                row.ID ?: "${row.RGSM}_${row.LB}",
+                row.LB ?: "unknown_lib",
+                row.PL ?: "unknown_platform",
+                row.PU ?: "unknown_unit",
+                file(row.R1, checkIfExists: true), 
+                file(row.R2, checkIfExists: true)
+                
+            )
         }
-        .set { ch_fq }
 }
 
 def Read_bam(bam_sheet) {

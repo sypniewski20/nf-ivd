@@ -1,35 +1,26 @@
 include { DRAGMAP_BAM } from '../modules/mapping.nf'
-include { MOSDEPTH; MOSDEPTH_EXOME } from '../modules/seqQC.nf'
 
 // ==========================
-// MAPPING WORKFLOW (PURE)
+// MULTIQC
 // ==========================
-workflow mapping_workflow {
+workflow dragmap_workflow {
 
     take:
-        ch_fastq
-        fasta_dir
-        fasta
-        bed
-        isWES   // <-- injected decision, no logic here
-
+        ch_fq
     main:
 
-        DRAGMAP_BAM(ch_fastq, fasta_dir, fasta)
+        ch_fasta = Channel.value([
+        file(params.fasta).parent,
+        file(params.fasta),
+        file("${params.fasta}.fai")
+        ])
 
-        bam      = DRAGMAP_BAM.out.ch_bam
-        flagstat = DRAGMAP_BAM.out.ch_flagstat
-        md5      = DRAGMAP_BAM.out.ch_md5
-
-        if (isWES) {
-            MOSDEPTH_EXOME(bam, bed, fasta)
-        } else {
-            MOSDEPTH(bam, fasta)
-        }
-
+        DRAGMAP_BAM(ch_fq, ch_fasta)
+    
     emit:
-        bam
-        flagstat
-        ch_md5
-        mosdepth = isWES ? MOSDEPTH_EXOME.out : MOSDEPTH.out
+
+        // standardised outputs
+        ch_bam       = DRAGMAP_BAM.out.ch_bam
+        ch_flagstat  = DRAGMAP_BAM.out.ch_flagstat
+        ch_md5       = DRAGMAP_BAM.out.ch_md5
 }

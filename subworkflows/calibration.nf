@@ -3,70 +3,62 @@ nextflow.enable.dsl=2
 include {
     HAPY_GERMLINE_EVAL
     HAPY_STRATIFIED_EVAL
-    HAPY_EXTRACT_METRICS
-    AGGREGATE_JSON_REPORT
-    GENERATE_CLINICAL_PDF
 } from "../modules/HapPy.nf"
 
-workflow GERMLINE_BENCHMARK {
+workflow germline_calibration_workflow {
 
     take:
-        ch_vcf
-        params
+        ch_vcf      // tuple(val(runID), path(vcf), path(tbi))
 
     main:
+        // 1. Create a Reference Channel
+        ch_fasta = Channel.value([
+            file(params.fasta),
+            file("${params.fasta}.fai")
+        ])
 
-        def fasta = file(params.fasta)
-
-        // ------------------------------------------------------------
-        // GIAB SAMPLE LIST (REGISTRY-DRIVEN)
-        // ------------------------------------------------------------
-        def giab_samples = ["HG002","HG003","HG004","HG005","HG006","HG007"]
-
-
-        // ------------------------------------------------------------
-        // CORE HAP.PY EVALUATION (GERMLINE)
-        // ------------------------------------------------------------
-        def evals = giab_samples
-            .collect { sample ->
-
-                def truth_vcf = file(params.truth[sample].vcf)
-                def truth_bed = file(params.truth[sample].bed)
-
-                HAPY_GERMLINE_EVAL(
-                    tuple(sample, ch_vcf),
-                    tuple(truth_vcf, truth_bed),
-                    fasta
-                )
+        // 2. Create a Channel from your GIAB Registry
+        // This replaces the .collect loop and makes it "Nextflow-native"
+        def giab_list = ["HG002","HG003","HG004"]
+        
+        ch_giab_samples = Channel.fromList(giab_list)
+            .map { sample_id ->
+                def truth_vcf = file(params.truth[sample_id].vcf)
+                def truth_bed = file(params.truth[sample_id].bed)
+                return tuple(sample_id, truth_vcf, truth_bed)
             }
 
+        // 3. CORE HAP.PY EVALUATION
+        // We combine the input VCF with every GIAB sample truth set
+        ch_eval_input = ch_vcf.combine(ch_giab_samples)
+        
+        // Input: [runID, vcf, tbi, sample_id, truth_vcf, truth_bed]
+        ch_eval_results = HAPY_GERMLINE_EVAL(
+            ch_eval_input,
+            ch_fasta
+        )
 
-        // ------------------------------------------------------------
-        // METRICS EXTRACTION
-        // ------------------------------------------------------------
-        def metrics = evals
-            .map { e -> HAPY_EXTRACT_METRICS(e) }
-
-
-        // ------------------------------------------------------------
-        // STRATIFIED ANALYSIS (HG002 ONLY - GIAB STANDARD)
+// ------------------------------------------------------------
+        // STRATIFIED ANALYSIS (HG002 ONLY - PARALLELIZED)
         // ------------------------------------------------------------
         def hg002_truth = file(params.truth.HG002.vcf)
         def hg002_bed   = file(params.truth.HG002.bed)
-        def strat_dir   = file(params.strat_dir)
+        
+        // 1. Create a channel of all BED files in the stratification directory
+        ch_strat_beds = Channel.fromPath("${params.strat_dir}/*.bed*")
 
-        def strat_eval = HAPY_STRATIFIED_EVAL(
-            tuple("HG002", ch_vcf),
-            tuple(hg002_truth, hg002_bed),
-            strat_dir,
-            fasta
+        // 2. Filter the evaluation results for HG002 and combine with the beds
+        // This creates a unique task for every BED file
+        ch_strat_input = ch_eval_results.combined_vcf
+            .filter { sample, vcf -> sample == "HG002" }
+            .combine(ch_strat_beds) 
+            .map { sample, vcf, tbi, strat_bed -> 
+                tuple(sample, vcf, tbi, hg002_truth, hg002_bed, strat_bed) 
+            }
+
+        // 3. Call the updated module
+        ch_strat_results = HAPY_STRATIFIED_EVAL(
+            ch_strat_input,
+            ch_fasta
         )
-
-
-        // ------------------------------------------------------------
-        // CLINICAL BUNDLE OUTPUT
-        // ------------------------------------------------------------
-        def json = AGGREGATE_JSON_REPORT(metrics)
-
-        GENERATE_CLINICAL_PDF(json)
 }

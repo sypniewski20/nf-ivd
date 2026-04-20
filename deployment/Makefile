@@ -22,10 +22,11 @@ READS_MANIFEST := manifests/reads_manifest.csv
 FASTA_MANIFEST := manifests/fasta_manifest.csv
 
 # ── Images ────────────────────────────────────────────────────────────────────
-SINGULARITY_DIR=singularity
+
 CORE_SIF  := singularity/core.sif
 QC_SIF    := singularity/qc.sif
 HAPPY_SIF := singularity/happi.sif
+MANTA_SIF := singularity/manta.sif
 
 ########################################################
 
@@ -38,7 +39,7 @@ all: setup data
 setup: containers strat truth fasta pon
 
 # ── Containers ────────────────────────────────────────────────────────────────
-containers: $(CORE_SIF) $(QC_SIF) $(HAPPY_SIF)
+containers: $(CORE_SIF) $(QC_SIF) $(HAPPY_SIF) $(MANTA_SIF)
 
 $(CORE_SIF):
 	$(SINGULARITY) build --fakeroot $@ singularity/core.def
@@ -48,6 +49,9 @@ $(QC_SIF):
 
 $(HAPPY_SIF):
 	$(SINGULARITY) build --disable-cache $@ docker://mgibio/hap.py:v0.3.12
+ 
+$(MANTA_SIF):
+	$(SINGULARITY) build --fakeroot $@ singularity/manta.def
 
 # ── References ────────────────────────────────────────────────────────────────
 strat:
@@ -59,12 +63,18 @@ truth:
 fasta:
 	$(RSCRIPT) scripts/download_and_verify.R --manifest $(FASTA_MANIFEST) --dir $(FASTA_DIR) --snapshot_dir $(FASTA_DIR)
 
+	# Build the hash table for the reference FASTA file
+	${SINGULARITY} run $(CORE_SIF) dragen-os --build-hash-table true \
+											 --ht-reference ${FASTA_DIR}/*.fasta  \
+											 --output-directory ${FASTA_DIR}
+
 pon:
-	gsutil cp gs://gatk-best-practices/somatic-hg38/1000g_pon.hg38.vcf.gz* $(PON_DIR)/*
+#TODO: add PON download and verification
+# 	gsutil cp gs://gatk-best-practices/somatic-hg38/1000g_pon.hg38.vcf.gz $(PON_DIR)/.
 
 # ── Reads (manual step — too large for default pipeline) ─────────────────────
 data:
-	scripts/benchmark_fastq_download.sh
+	scripts/ashkenazim_trio_download.sh ${READS_DIR}
 
 # ── Clean ─────────────────────────────────────────────────────────────────────
 clean:

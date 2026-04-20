@@ -1,200 +1,91 @@
-# nf-ivd
+# Clinical Germline IVD Pipeline (GATK-DRAGEN Mode)
 
-Clinical-grade environment bootstrap for GIAB benchmarking and variant calling validation.
+## Overview
+This pipeline is a high-fidelity genomic workflow designed for **IVD-compliant** germline variant calling. It implements the **GATK 4.6+ Best Practices** using the **DRAGEN-mode** HMM and **DRAGstr** noise modeling to achieve hardware-equivalent accuracy on standard CPU infrastructure.
 
-This repository **does not run the pipeline yet**.
-It builds a **fully reproducible, auditable environment** in which the pipeline will run.
-
-The goal is to guarantee:
-
-* Reproducible containers
-* Verified reference genome
-* Audited data acquisition (reads and BEDs)
-* Snapshot of environment state for traceability
+The workflow supports:
+* **WGS & WES** sequencing types.
+* **Single-Sample** analysis for routine diagnostics.
+* **Joint-Calling (Trio/Cohort)** for pedigree-aware family analysis.
+* **Clinical Benchmarking** via GIAB (Genome in a Bottle) truth sets.
 
 ---
 
-## Repository Structure
-
-```
-.
-├── Makefile
-├── core.def
-├── qc.def
-├── happi.def
-├── fasta_manifest.tsv
-├── manifest.csv
-├── giab_bed_manifest.csv
-├── scripts/
-│   ├── download_reads.R
-│   ├── download_beds.R
-│   ├── utils.R
-│   └── init.R
-```
+## Architecture
+The pipeline is built with modularity as a core principle:
+* **Input Layer:** Handles FASTQ-to-BAM or BAM-to-VCF (checkpoint) entry points.
+* **DRAGstr Calibration:** Mandatory per-sample noise model calibration.
+* **Variant Calling:** Parallelized scattering across genomic intervals.
+* **Refinement:** Bayesian pedigree refinement using `.ped` files.
 
 ---
 
-## Entry Points (Important)
+## Quick Start
 
-These are the only commands you need.
+### 1. Requirements
+* Nextflow (>= 22.10)
+* Singularity / Apptainer
+* References: GRCh38 Fasta, DRAGstr STR Table, and Pedigree file (optional).
 
-### 1. Full environment bootstrap
+### 2. Execution
 
+**Run as a Single Sample (WGS):**
+```bash
+nextflow run main.nf \
+    --input_type fastq \
+    --run_mode HC \
+    --joint_calling false \
+    --samplesheet deployment/manifests/HG002_samplesheet.csv \
+    -profile singularity
 ```
-make all
+
+**Run as a Trio (Joint Calling):**
+```bash
+nextflow run main.nf \
+    --input_type fastq \
+    --run_mode HC \
+    --joint_calling true \
+    --pedigree deployment/manifests/ashkenazim_trio.ped \
+    --samplesheet deployment/manifests/trio_samplesheet.csv \
+    -profile singularity
 ```
 
-This performs:
+## Configuration
+Key parameters in `nextflow.config`:
 
-1. Build containers (core, qc, hap.py)
-2. Download and verify reference genome
-3. Initialize audit layer
-4. Download reads and BED files
-5. Create environment snapshot
+| Parameter | Description | Default |
+| :--- | :--- | :--- |
+| `joint_calling` | Enable GenomicsDB & GenotypeGVCFs branch | `true` |
+| `seq_type` | `WGS` or `WES` (affects intervals & calibration) | `WGS` |
+| `dragen_mode` | Enforces DRAGEN-equivalent HMM and parameters | `true` |
+| `intervals_list` | List of genomic regions for parallel scattering | `chr1..M` |
+| `pedigree` | Path to the validated .ped file for family priors | `null` |
 
 ---
 
-### 2. Build only environment (no data)
+## Clinical Traceability & Data Integrity
+Every run generates a timestamped `runID` folder (Format: `YYYYMMDD_HHMMSS`) containing:
 
-```
-make setup
-```
+1.  **VCFs:** Filtered and (optionally) Pedigree-refined variant calls.
+2.  **BAMs:** Sorted, indexed, and MD5-verified alignments with full Read Group headers.
+3.  **QC Reports:** Integrated MultiQC report (FastQC, Flagstat, Mosdepth).
+4.  **Audit Logs:** Nextflow timeline, trace, and execution DAG for regulatory compliance.
 
-Builds:
-
-* `core.sif`
-* `qc.sif`
-* `happi.sif` (hap.py pinned by digest)
-* Downloads and verifies reference from `fasta_manifest.tsv`
-* Initializes audit ledger
-
----
-
-### 3. Download all data (reads + beds)
-
-```
-make download
-```
-
-Uses:
-
-* `manifest.csv` for reads
-* `giab_bed_manifest.csv` for BED files
-
-Each file is:
-
-* Downloaded
-* SHA256 verified
-* Written to ledger
-
-Safe to re-run. Already completed datasets are skipped.
+### Integrity Checks
+* **BAM Validation:** `samtools quickcheck` is performed on all alignments before variant calling.
+* **File Traceability:** MD5 checksums are generated for all final alignment files.
+* **Normalization:** All variants are decomposed and normalized (left-aligned) for clinical consistency.
 
 ---
 
-### 4. Snapshot current environment state
+## Validation & Benchmarking
+This workflow is pre-configured to benchmark against the **Ashkenazim Trio (HG002, HG003, HG004)**. 
 
-```
-make snapshot
-```
-
-Creates:
-
-```
-data/_run_snapshot.json
-```
-
-Contains:
-
-* Timestamp
-* Reference manifest used
-* Containers used
-
-This is the clinical traceability anchor.
+To run a validation study:
+1. Ensure the `truth` registry in `nextflow.config` points to your local copies of the NIST v4.2.1 benchmarks.
+2. The pipeline will produce a `filtered_final.vcf.gz` which can be compared using `hap.py` or `rtg-tools`.
 
 ---
 
-## Reference Genome
-
-Reference files are defined in:
-
-```
-fasta_manifest.tsv
-```
-
-Each entry contains:
-
-```
-file<TAB>sha256
-```
-
-Files are pulled from Broad GCS and verified before use.
-
----
-
-## Containers
-
-| Container | Source                      | Purpose                      |
-| --------- | --------------------------- | ---------------------------- |
-| core.sif  | core.def                    | aligners, samtools, bcftools |
-| qc.sif    | qc.def                      | QC and metrics tools         |
-| happi.sif | mgibio/hap.py pinned digest | GIAB benchmarking            |
-
-`hap.py` is built from a **pinned Docker registry digest**, not a tag.
-
----
-
-## Data Manifests
-
-### Reads
-
-```
-manifest.csv
-```
-
-Columns:
-
-* dataset
-* accession (SRR/ERR) or
-* source_url (http/ftp)
-
-### BEDs
-
-```
-giab_bed_manifest.csv
-```
-
-Columns:
-
-* dataset
-* bed_type
-* source_url
-
----
-
-## Audit Layer
-
-Every downloaded file gets:
-
-* SHA256 computed
-* Entry written into:
-
-```
-data/_ledger.json
-```
-
-This file is append-only and never overwritten.
-
----
-
-## Cleaning
-
-```
-make clean
-```
-
-Removes:
-
-* `fasta/`
-* `data/`
-* all `.sif` files
-* inspect metadata
+## License & Compliance
+Designed for research and clinical validation. Ensure all container images (`core.sif`, `qc.sif`) are version-locked in your local registry to maintain IVD reproducibility.

@@ -5,8 +5,7 @@ From: mambaorg/micromamba:1.5.8
 # BUILD-TIME FILES
 ########################################################
 %files
-    environment-core.yml /opt/build/environment-core.yml
-    core_lock.yml   /opt/build/core_lock.yml
+    singularity/core_lock.yml   /opt/build/core_lock.yml
 
 ########################################################
 # POST BUILD
@@ -19,40 +18,44 @@ From: mambaorg/micromamba:1.5.8
     export MAMBA_ROOT_PREFIX=/opt/micromamba
 
     apt-get update && apt-get install -y \
-        bash curl wget unzip ca-certificates bzip2 \
-        coreutils
+        bash \
+        curl \
+        wget \
+        unzip \
+        ca-certificates \
+        bzip2 \
+        coreutils \
+        procps \
+        openjdk-17-jdk
+
 
     mkdir -p /opt/envs /opt/build
 
-    ########################################################
-    # 2. INSTALL ENVIRONMENT (REAL BUILD STEP)
-    ########################################################
-    echo "[INFO] Creating micromamba environment from environment.yml"
+    export DEBIAN_FRONTEND=noninteractive
+    export MAMBA_ROOT_PREFIX=/opt/micromamba
 
-    micromamba create -y \
-        -p /opt/envs/tools \
-        -f /opt/build/environment-core.yml
+    ########################################################
+    # 1. INSTALL CONDA-LOCK INTO BASE
+    ########################################################
+    echo "[INFO] Installing conda-lock"
+    micromamba install -y -p $MAMBA_ROOT_PREFIX conda-forge::conda-lock=4.0.0
+    export PATH=$MAMBA_ROOT_PREFIX/bin:$PATH
+
+    ########################################################
+    # 2. INSTALL ENVIRONMENT FROM LOCK FILE
+    ########################################################
+    echo "[INFO] Installing environment from lock file"
+
+    conda-lock install -p /opt/envs/tools /opt/build/core_lock.yml
 
     micromamba clean -a -y
 
     ########################################################
-    # 3. VERIFY LOCK FILE AGAINST RESOLVED ENV (AUDIT ONLY)
-    ########################################################
-    echo "[INFO] Validating conda-lock consistency (non-blocking audit)"
-
-    if command -v conda-lock >/dev/null 2>&1; then
-        conda-lock verify /opt/build/core_lock.yml|| \
-            echo "[WARN] Lock file drift detected"
-    else
-        echo "[WARN] conda-lock not installed, skipping verification"
-    fi
-
-    ########################################################
-    # 4. GATK (external, SHA pinned)
+    # 3. GATK (external, SHA pinned)
     ########################################################
     GATK_VERSION=4.6.1.0
     GATK_URL="https://github.com/broadinstitute/gatk/releases/download/${GATK_VERSION}/gatk-${GATK_VERSION}.zip"
-    GATK_SHA256="444600f7b38b46ad0b3606b7d40ce921e0ff1910a50165872f1c73c7c4a1a390"
+    GATK_SHA256="ac7015c3f0ef1852745ca0ef647adbf8ddef5db63ab485b00bc1ffe654814155"
 
     mkdir -p /opt/tools/gatk
     cd /opt/tools/gatk
@@ -64,6 +67,7 @@ From: mambaorg/micromamba:1.5.8
     rm -f gatk.zip
 
     ln -s /opt/tools/gatk/gatk-${GATK_VERSION}/gatk /usr/local/bin/gatk
+    gatk --version
 
 ########################################################
 # ENVIRONMENT

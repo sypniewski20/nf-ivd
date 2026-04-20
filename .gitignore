@@ -7,3 +7,8 @@ results/
 .RData
 .Rproj.user/
 *.Rproj
+*.sh
+*.txt
+*.html
+*.dag
+*nextflow.log*
