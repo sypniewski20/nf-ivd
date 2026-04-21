@@ -1,32 +1,38 @@
 SINGULARITY ?= singularity
 GSUTIL      ?= gsutil
+WGET		?= wget
 R           ?= Rscript
 
 # ── Scripts ──────────────────────────────────────────────────────────────────────
 RSCRIPT = Rscript
 
 # ── Dirs ──────────────────────────────────────────────────────────────────────
-STRAT_DIR  := reference/giab_stratifications
-TRUTH_DIR  := reference/truth
-READS_DIR  := reference/reads
-FASTA_DIR  := reference/fasta
-REF_DIR    := reference
-PON_DIR    := reference/pon
-OUTPUT_DIR := output
-LOG_DIR    := logs
+REF_DIR    := deployment/reference
+STRAT_DIR  := $(REF_DIR)/giab_stratifications
+TRUTH_DIR  := $(REF_DIR)/truth
+READS_DIR  := $(REF_DIR)/reads
+FASTA_DIR  := $(REF_DIR)/fasta
+ADD_RESOURCES    := $(REF_DIR)/additional_resources
 
 # ── Manifests ─────────────────────────────────────────────────────────────────
-STRAT_MANIFEST := manifests/giab_strat_manifest.csv
-TRUTH_MANIFEST := manifests/truth_manifest.csv
-READS_MANIFEST := manifests/reads_manifest.csv
-FASTA_MANIFEST := manifests/fasta_manifest.csv
+STRAT_MANIFEST := deployment/manifests/giab_strat_manifest.csv
+TRUTH_MANIFEST := deployment/manifests/truth_manifest.csv
+READS_MANIFEST := deployment/manifests/reads_manifest.csv
+FASTA_MANIFEST := deployment/manifests/fasta_manifest.csv
 
 # ── Images ────────────────────────────────────────────────────────────────────
 
-CORE_SIF  := singularity/core.sif
-QC_SIF    := singularity/qc.sif
-HAPPY_SIF := singularity/happi.sif
-MANTA_SIF := singularity/manta.sif
+CORE_SIF  := deployment/singularity/core.sif
+QC_SIF    := deployment/singularity/qc.sif
+HAPPY_SIF := deployment/singularity/happi.sif
+MANTA_SIF := deployment/singularity/manta.sif
+
+# ── Additional Resources ───────────────────────────────────────────────────────
+PLOIDY_PRIORS := gs://gatk-sv-resources-public/hg38/v0/sv-resources/resources/v1/hg38.contig_ploidy_priors_homo_sapiens.tsv
+PON_1K_GENOMES := gs://gatk-best-practices/somatic-hg38/1000g_pon.hg38.vcf.gz
+BROAD_INTERVALS := https://storage.googleapis.com/gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.interval_list
+ENCODE_BLACKLIST := https://www.encodeproject.org/files/ENCFF356LFX/@@download/ENCFF356LFX.bed.gz
+UCSC_SEGDUPS := https://hgdownload.soe.ucsc.edu/goldenPath/hg38/database/genomicSuperDups.txt.gz
 
 ########################################################
 
@@ -36,22 +42,22 @@ MANTA_SIF := singularity/manta.sif
 
 all: setup data
 
-setup: containers strat truth fasta pon
+setup: containers strat truth fasta add_resources
 
 # ── Containers ────────────────────────────────────────────────────────────────
 containers: $(CORE_SIF) $(QC_SIF) $(HAPPY_SIF) $(MANTA_SIF)
 
 $(CORE_SIF):
-	$(SINGULARITY) build --fakeroot $@ singularity/core.def
+	$(SINGULARITY) build --fakeroot $@ deployment/singularity/core.def
 
 $(QC_SIF):
-	$(SINGULARITY) build --fakeroot $@ singularity/qc.def
+	$(SINGULARITY) build --fakeroot $@ deployment/singularity/qc.def
 
 $(HAPPY_SIF):
 	$(SINGULARITY) build --disable-cache $@ docker://mgibio/hap.py:v0.3.12
  
 $(MANTA_SIF):
-	$(SINGULARITY) build --fakeroot $@ singularity/manta.def
+	$(SINGULARITY) build --fakeroot $@ deployment/singularity/manta.def
 
 # ── References ────────────────────────────────────────────────────────────────
 strat:
@@ -64,13 +70,26 @@ fasta:
 	$(RSCRIPT) scripts/download_and_verify.R --manifest $(FASTA_MANIFEST) --dir $(FASTA_DIR) --snapshot_dir $(FASTA_DIR)
 
 	# Build the hash table for the reference FASTA file
-	${SINGULARITY} run $(CORE_SIF) dragen-os --build-hash-table true \
+	$(SINGULARITY) run $(CORE_SIF) dragen-os --build-hash-table true \
 											 --ht-reference ${FASTA_DIR}/*.fasta  \
 											 --output-directory ${FASTA_DIR}
 
-pon:
-#TODO: add PON download and verification
-# 	gsutil cp gs://gatk-best-practices/somatic-hg38/1000g_pon.hg38.vcf.gz $(PON_DIR)/.
+add_resources:
+	$(GSUTIL) cp ${PLOIDY_PRIORS} ${ADD_RESOURCES}/
+	$(GSUTIL) cp ${PON_1K_GENOMES} ${ADD_RESOURCES}/
+	$(WGET) -P ${ADD_RESOURCES} ${BROAD_INTERVALS}
+	$(WGET) -P ${ADD_RESOURCES} ${ENCODE_BLACKLIST}
+	$(WGET) -P ${ADD_RESOURCES} ${UCSC_SEGDUPS}
+
+	# Refine intervals
+
+	$(SINGULARITY) run $(CORE_SIF) deployment/scripts/./refine_intervals.sh \
+															$(ADD_RESOURCES)/wgs_calling_regions.hg38.interval_list \
+															$(ADD_RESOURCES)/ENCFF356LFX.bed.gz \
+															$(ADD_RESOURCES)/genomicSuperDups.txt.gz \
+															$(FASTA_DIR)/*.dict \
+															$(ADD_RESOURCES)
+
 
 # ── Reads (manual step — too large for default pipeline) ─────────────────────
 data:

@@ -5,7 +5,7 @@ From: mambaorg/micromamba:1.5.8
 # BUILD-TIME FILES
 ########################################################
 %files
-    singularity/core_lock.yml   /opt/build/core_lock.yml
+    deployment/singularity/core_lock.yml   /opt/build/core_lock.yml
 
 ########################################################
 # POST BUILD
@@ -26,7 +26,8 @@ From: mambaorg/micromamba:1.5.8
         bzip2 \
         coreutils \
         procps \
-        openjdk-17-jdk
+        openjdk-17-jdk \
+        libgomp1
 
 
     mkdir -p /opt/envs /opt/build

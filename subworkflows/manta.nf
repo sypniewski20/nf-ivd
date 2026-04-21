@@ -6,7 +6,7 @@ include {
     JOINT_DIPLOID_ANALYSIS
 } from '../modules/manta.nf'
 
-workflow MANTA_WORKFLOW{
+workflow manta_workflow {
     take:
         ch_bam
 

@@ -13,7 +13,7 @@
 version: 1
 metadata:
   content_hash:
-    linux-64: 8eacbf9b5fa8e49c95e5051b86e59eb984b9af6ba15dd7ded3bbd602a277cafb
+    linux-64: 70e64fcfd3f124f582221bf93c29deb60f3b7f365cb03195d03edf1a92217c1f
   channels:
   - url: conda-forge
     used_env_vars: []
@@ -51,6 +51,22 @@ package:
   hash:
     md5: 7dea9d0b49ecf4a553472add3d297729
     sha256: faddb0ad9db1c41074ac9d00ca247d645c1a7ab812c0f0bde0caf30db68b5bd7
+  category: main
+  optional: false
+- name: bedtools
+  version: 2.31.1
+  manager: conda
+  platform: linux-64
+  dependencies:
+    bzip2: '>=1.0.8,<2.0a0'
+    libgcc-ng: '>=12'
+    libstdcxx-ng: '>=12'
+    libzlib: '>=1.2.13,<2.0a0'
+    xz: '>=5.2.6,<6.0a0'
+  url: https://conda.anaconda.org/bioconda/linux-64/bedtools-2.31.1-hf5e1c6e_2.tar.bz2
+  hash:
+    md5: 55aacbd977c83d6d4849c91310ef48c5
+    sha256: bb257aa49d4039bd24363d0d5d2948bfb4ae6de2245fe706b1152bfc2229da3f
   category: main
   optional: false
 - name: boost
@@ -790,6 +806,21 @@ package:
   hash:
     md5: 8e194e7b992f99a5015edbd4ebd38efd
     sha256: 82088a6e4daa33329a30bc26dc19a98c7c1d3f05c0f73ce9845d4eab4924e9e1
+  category: main
+  optional: false
+- name: survivor
+  version: 1.0.7
+  manager: conda
+  platform: linux-64
+  dependencies:
+    libgcc-ng: '>=12'
+    libstdcxx-ng: '>=12'
+    libzlib: '>=1.2.13,<2.0a0'
+    zlib: ''
+  url: https://conda.anaconda.org/bioconda/linux-64/survivor-1.0.7-hdcf5f25_5.tar.bz2
+  hash:
+    md5: e5a1d5b086ca29fe8a5d641d48b37eee
+    sha256: 3d9800a6a2c706be8e847192df1936790d2b88c6ec9e47f493a6c71ae7da43e2
   category: main
   optional: false
 - name: tk

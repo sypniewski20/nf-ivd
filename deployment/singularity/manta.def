@@ -5,7 +5,7 @@ From: mambaorg/micromamba:1.5.8
 # BUILD-TIME FILES
 ########################################################
 %files
-    singularity/manta_lock.yml   /opt/build/manta_lock.yml
+    deployment/singularity/manta_lock.yml   /opt/build/manta_lock.yml
 
 %post
     set -e

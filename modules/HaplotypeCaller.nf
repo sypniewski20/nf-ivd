@@ -13,7 +13,7 @@ def GATK_GLOBAL_ARGS = """
 // 1. CALIBRATION (DRAGSTR)
 // ------------------------------------------------------------
 
-process WES_CALIBRATE_DRAGSTR_MODEL {
+process CALIBRATE_DRAGSTR_MODEL {
     label 'medium'
     tag "${sample}"
     label 'gatk'
@@ -29,36 +29,14 @@ process WES_CALIBRATE_DRAGSTR_MODEL {
         tuple val(sample), path("${sample}_dragstr_model.txt")
 
     script:
+        def padding = (params.seq_type == 'WES') ? params.interval_padding : 0
     """
     gatk CalibrateDragstrModel \
         -R ${fasta} \
         -I ${bam} \
         -L ${bed} \
         --interval-set-rule INTERSECTION \
-        --interval-padding ${interval_padding} \
-        -str ${str_table} \
-        -O ${sample}_dragstr_model.txt
-    """
-}
-
-process WGS_CALIBRATE_DRAGSTR_MODEL {
-    label 'medium'
-    tag "${sample}"
-    label 'gatk'
-    publishDir "${params.outfolder}/${params.runID}/HC/dragstr", mode: 'copy'
-
-    input:
-        tuple val(sample), path(bam), path(bai)
-        tuple path(fasta), path(fai), path(fasta_dict), path(str_table)
-
-    output:
-        tuple val(sample), path("${sample}_dragstr_model.txt")
-
-    script:
-    """
-    gatk CalibrateDragstrModel \
-        -R ${fasta} \
-        -I ${bam} \
+        --interval-padding ${padding} \
         -str ${str_table} \
         -O ${sample}_dragstr_model.txt
     """
@@ -68,9 +46,9 @@ process WGS_CALIBRATE_DRAGSTR_MODEL {
 // 2. HAPLOTYPE CALLING (GVCF)
 // ------------------------------------------------------------
 
-process WES_GVCF_HAPLOTYPE_CALLER {
+process GVCF_HAPLOTYPE_CALLER {
     label 'xlarge'
-    tag "${sample}:WES"
+    tag "${sample}"
     label 'gatk'
 
     input:
@@ -80,44 +58,18 @@ process WES_GVCF_HAPLOTYPE_CALLER {
         val(interval_padding)
 
     output:
-        tuple val(sample), val("exome"), path("${sample}_exome.g.vcf.gz"), emit: vcf
-        tuple val(sample), val("exome"), path("${sample}_exome.g.vcf.gz.tbi"), emit: tbi
-
+        tuple val(sample), path("${sample}.g.vcf.gz"), emit: vcf
+        tuple val(sample), path("${sample}.g.vcf.gz.tbi"), emit: tbi
     script:
+        def padding = (params.seq_type == 'WES') ? params.interval_padding : 0
     """
     gatk --java-options "-Xmx32g" HaplotypeCaller \
         -R ${fasta} \
         -I ${bam} \
-        -O ${sample}_exome.g.vcf.gz \
+        -O ${sample}.g.vcf.gz \
         -L ${bed} \
         --interval-set-rule INTERSECTION \
-        --interval-padding ${interval_padding} \
-        --dragstr-params-path ${dragstr} \
-        ${GATK_GLOBAL_ARGS} \
-        -ERC GVCF
-    """
-}
-
-process WGS_GVCF_HAPLOTYPE_CALLER {
-    label 'large'
-    tag "${sample}:${interval_name}"
-    label 'gatk'
-
-    input:
-        tuple val(sample), path(bam), path(bai), path(dragstr), val(interval_name)
-        tuple path(fasta), path(fai), path(fasta_dict)
-
-    output:
-        tuple val(sample), val(interval_name), path("${sample}_${interval_name}.g.vcf.gz"), emit: vcf
-        tuple val(sample), val(interval_name), path("${sample}_${interval_name}.g.vcf.gz.tbi"), emit: tbi
-
-    script:
-    """
-    gatk --java-options "-Xmx16g" HaplotypeCaller \
-        -R ${fasta} \
-        -I ${bam} \
-        -O ${sample}_${interval_name}.g.vcf.gz \
-        -L ${interval_name} \
+        --interval-padding ${padding} \
         --dragstr-params-path ${dragstr} \
         ${GATK_GLOBAL_ARGS} \
         -ERC GVCF
@@ -128,64 +80,34 @@ process WGS_GVCF_HAPLOTYPE_CALLER {
 // 3. JOINT GENOTYPING
 // ------------------------------------------------------------
 
-process WES_GENOMICSDB_IMPORT {
+process GENOMICSDB_IMPORT {
     label 'xlarge'
-    tag "WES_DB"
     label 'gatk'
 
     input:
-        tuple path(gvcfs), path(tbis)
+        path(gvcfs)
+        path(tbis)
         tuple path(fasta), path(fai), path(fasta_dict)
         path(bed)
 
     output:
-        tuple val("exome"), path("wes_genomics_db")
+        path("genomics_db")
 
     script:
+        def input_files = gvcfs.collect { "-V $it" }.join(' ')
     """
-    rm -rf wes_genomics_db
-    V_ARGS=\$(echo ${gvcfs} | tr ' ' '\\n' | sed 's/^/-V /' | tr '\\n' ' ')
 
     gatk --java-options "-Xmx32g -Xms32g" GenomicsDBImport \
-        --genomicsdb-workspace-path wes_genomics_db \
+        --genomicsdb-workspace-path genomics_db \
         -R ${fasta} \
         -L ${bed} \
-        \$V_ARGS \
-        --tmp-dir . \
-        --reader-threads 2
+        ${input_files} \
+        --tmp-dir . 
     """
 }
 
-process WGS_GENOMICSDB_IMPORT {
-    label 'xlarge'
-    tag "${interval_name}"
-    label 'gatk'
-
-    input:
-        tuple val(interval_name), path(gvcfs), path(tbis)
-        tuple path(fasta), path(fai), path(fasta_dict)
-
-    output:
-        tuple val(interval_name), path("${interval_name}_db")
-
-    script:
-    """
-    rm -rf ${interval_name}_db
-    V_ARGS=\$(echo ${gvcfs} | tr ' ' '\\n' | sed 's/^/-V /' | tr '\\n' ' ')
-
-    gatk --java-options "-Xmx16g -Xms16g" GenomicsDBImport \
-        --genomicsdb-workspace-path ${interval_name}_db \
-        -R ${fasta} \
-        -L ${interval_name} \
-        \$V_ARGS \
-        --tmp-dir . \
-        --reader-threads 2
-    """
-}
-
-process WES_GENOTYPE_GVCF {
+process GENOTYPE_GVCF {
     label 'large'
-    tag "WES_Genotype"
     label 'gatk'
 
     input:
@@ -194,36 +116,16 @@ process WES_GENOTYPE_GVCF {
         path(bed)
 
     output:
-        path("exome_joint.vcf.gz"), emit: vcf
-
+        tuple path("HC_joint.vcf.gz"), path("HC_joint.vcf.gz.tbi")
     script:
     """
     gatk --java-options "-Xmx16g" GenotypeGVCFs \
         -R ${fasta} \
         -V gendb://${gendb} \
         -L ${bed} \
-        -O exome_joint.vcf.gz
-    """
-}
+        -O HC_joint.vcf.gz
 
-process WGS_GENOTYPE_GVCF {
-    label 'large'
-    tag "${interval_name}"
-    label 'gatk'
-
-    input:
-        tuple val(interval_name), path(gendb)
-        tuple path(fasta), path(fai), path(fasta_dict)
-
-    output:
-        path("${interval_name}.vcf.gz"), emit: vcf
-
-    script:
-    """
-    gatk --java-options "-Xmx16g" GenotypeGVCFs \
-        -R ${fasta} \
-        -V gendb://${gendb} \
-        -O ${interval_name}.vcf.gz
+    tabix -p vcf HC_joint.vcf.gz
     """
 }
 
@@ -231,101 +133,76 @@ process WGS_GENOTYPE_GVCF {
 // 4. GATHER & FILTERING
 // ------------------------------------------------------------
 
-process GATHER_VCFS {
-    label 'medium'
-    tag "${params.runID}"
-    label 'gatk'
-    publishDir "${params.outfolder}/${params.runID}/HC/raw", mode: 'copy'
-
-    input:
-        path(vcf_list) 
-
-    output:
-        path("${params.runID}_raw.vcf.gz"), emit: vcf
-        path("${params.runID}_raw.vcf.gz.tbi"), emit: tbi
-
-    script:
-    """
-    V_INPUTS=\$(echo ${vcf_list} | tr ' ' '\\n' | sed 's/^/-I /' | tr '\\n' ' ')
-
-    gatk GatherVcfs \
-        \$V_INPUTS \
-        -O ${params.runID}_raw.vcf.gz
-
-    gatk IndexFeatureFile -I ${params.runID}_raw.vcf.gz
-    """
-}
-
 process VARIANT_FILTERING {
     label 'medium'
-    tag "${vcf.baseName}"
     label 'gatk'
     publishDir "${params.outfolder}/${params.runID}/HC/filtered", mode: 'copy'
 
     input:
-        path(vcf)
-        path(tbi)
+        tuple path(vcf), path(tbi)
         tuple path(fasta), path(fai), path(fasta_dict)
-
     output:
-        path("${params.runID}_filtered.vcf.gz"), emit: vcf
-        path("${params.runID}_filtered.vcf.gz.tbi"), emit: tbi
-        path("${params.runID}_filtered.vcf.gz.stats"), emit: stats
-        path("${params.runID}_filtered.vcf.gz.md5"), emit: md5
+        path("HC_filtered_norm.vcf.gz"), emit: vcf
+        path("HC_filtered_norm.vcf.gz.tbi"), emit: tbi
+        path("HC_filtered_norm.vcf.gz.stats"), emit: stats
+        path("HC_filtered_norm.vcf.gz.md5"), emit: md5
     script:
     """
-    # Applying GATK hard filters as a baseline
+    
     gatk VariantFiltration \
         -R ${fasta} \
         -V ${vcf} \
-        -O ${params.runID}_filtered.vcf.gz \
         --filter-expression "QD < 2.0 || FS > 60.0 || MQ < 40.0 || SOR > 3.0" \
-        --filter-name "GATK_HARD_FILTER"
+        --filter-name "GATK_HARD_FILTER" \
+        -O - | \
+    bcftools norm -a --atom-overlaps . -m - -f ${fasta} -Ou | \
+    bcftools annotate --set-id +'%CHROM\\_%POS\\_%REF\\_%ALT' -Ou | \
+    bcftools +fill-tags -Ou -- -t AF,AC | \
+    bcftools sort -Oz -o HC_filtered_norm.vcf.gz
 
-    bcftools stat ${params.runID}_filtered.vcf.gz > ${params.runID}_filtered.vcf.gz.stats
-    md5sum ${params.runID}_filtered.vcf.gz > ${params.runID}_filtered.vcf.gz.md5
+    tabix -p vcf HC_filtered_norm.vcf.gz
+
+    bcftools stat HC_filtered_norm.vcf.gz > HC_filtered_norm.vcf.gz.stats
+    md5sum HC_filtered_norm.vcf.gz > HC_filtered_norm.vcf.gz.md5
 
     """
 }
 
 process CALCULATE_POSTERIORS {
-    tag "${vcf.baseName}"
     label 'gatk'
     label 'medium'
     publishDir "${params.outfolder}/${params.runID}/HC/posteriors", mode: 'copy'
 
     input:
-        path(vcf)
-        path(vcf_index)
+        path(vcfs)
+        path(tbis)
         path(pedigree)
-
     output:
-        path("${params.runID}_posteriors.vcf.gz"), emit: vcf
-        path("${params.runID}_posteriors.vcf.gz.tbi"), emit: tbi
-        path("${params.runID}_posteriors.vcf.gz.md5"), emit: md5
+        path("HC_posteriors.vcf.gz"), emit: vcf
+        path("HC_posteriors.vcf.gz.tbi"), emit: tbi
+        path("HC_posteriors.vcf.gz.md5"), emit: md5
     script:
+        def input_files = vcfs.collect { "-V $it" }.join(' ')
     """
     gatk CalculateGenotypePosteriors \
-        -V ${vcf} \
+         ${input_files} \
         -ped ${pedigree} \
-        -O ${params.runID}_posteriors.vcf.gz \
-        ${GATK_GLOBAL_ARGS}
+        -O HC_posteriors.vcf.gz
 
-    tabix -p vcf ${params.runID}_posteriors.vcf.gz
-    md5sum ${params.runID}_posteriors.vcf.gz > ${params.runID}_posteriors.vcf.gz.md5
+    tabix -p vcf HC_posteriors.vcf.gz
+    md5sum HC_posteriors.vcf.gz > HC_posteriors.vcf.gz.md5
 
     """
 }
 
 process HAPLOTYPE_CALLER_EXTRACT_GT {
     label 'tiny'
-    tag "${vcf.baseName}"
     label 'gatk'
     publishDir "${params.outfolder}/${params.runID}/HC/genotypes", mode: 'copy'
 
     input:
         path(vcf)
-
+        path(tbi)
     output:
         path("${vcf.baseName}_gt.table")
         path("${vcf.baseName}_gt.table.md5")
