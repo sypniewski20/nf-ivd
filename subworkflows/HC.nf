@@ -9,7 +9,8 @@ include {
     GENOTYPE_GVCF;
     COLLECT_AND_VARIANT_FILTERING;
     CALCULATE_POSTERIORS;
-    HAPLOTYPE_CALLER_EXTRACT_GT
+    HAPLOTYPE_CALLER_EXTRACT_GT as HAPLOTYPE_CALLER_EXTRACT_GT_POST;
+    HAPLOTYPE_CALLER_EXTRACT_GT as HAPLOTYPE_CALLER_EXTRACT_GT_FILTERED
 } from "../modules/HaplotypeCaller.nf"
 
 workflow hc_workflow {
@@ -76,10 +77,10 @@ workflow hc_workflow {
                 file(params.pedigree)
             )
 
-            HAPLOTYPE_CALLER_EXTRACT_GT(ch_post.vcf, ch_post.tbi)
+            HAPLOTYPE_CALLER_EXTRACT_GT_POST(ch_post.vcf, ch_post.tbi)
         }
 
-        HAPLOTYPE_CALLER_EXTRACT_GT(ch_filtered.vcf, ch_filtered.tbi)
+        HAPLOTYPE_CALLER_EXTRACT_GT_FILTERED(ch_filtered.vcf, ch_filtered.tbi)
 
     emit:
         hc_vcf = ch_filtered.vcf

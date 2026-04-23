@@ -94,8 +94,6 @@ workflow {
 
         cal_results = germline_calibration_workflow(hc_results.hc_vcf)
 
-        ch_final_vcf = ch_final_vcf.mix(cal_results.vcf)
-        ch_final_stats = ch_final_stats.mix(cal_results.stats)
     }
 
     // 3. FINAL QC & REPORTING
