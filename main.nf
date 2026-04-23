@@ -33,11 +33,6 @@ workflow {
             // 2. Stream through FASTP (Input: URLs -> Output: Local Filtered Chunks)
             nist_streaming_QC_workflow(ch_raw_stream)
 
-            // 3. Group all MD5-tagged chunks by NIST_SAMPLE_NAME (HG002, etc.)
-            // Output of nist_streaming_QC_workflow: [RGSM, RGID, RGLB, RGPL, R1_file, R2_file]
-            ch_grouped_to_map = nist_streaming_QC_workflow.out.fastq
-                .groupTuple(by: 0) 
-
             // 4. Align grouped chunks into single Sample BAMs
             mapping_results = dragmap_workflow(ch_grouped_to_map)
             

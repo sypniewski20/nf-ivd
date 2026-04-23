@@ -87,19 +87,19 @@ process GENOMICSDB_IMPORT {
     label 'gatk'
     tag "${chrom}"
     input:
-        tuple val(chrom), path(vcfs)
-        tuple val(chrom), path(tbis)
+        val(chrom)
+        path(gvcfs)
+        path(tbis)
         tuple path(fasta), path(fai), path(fasta_dict), path(str_table)
 
     output:
-        tuple val(chrom), path("genomics_db")
+        tuple val(chrom), path("genomicsdb_${chrom}")
 
     script:
     def input_files = gvcfs.collect { "-V $it" }.join(' ')
     """
     
-    gatk --java-options "${GLOBAL_JAVA_OPTS}" HaplotypeCaller \
-        GenomicsDBImport \
+    gatk --java-options "${GLOBAL_JAVA_OPTS}" GenomicsDBImport \
         --genomicsdb-workspace-path genomicsdb_${chrom} \
         -R ${fasta} \
         -L ${chrom} \
@@ -124,7 +124,7 @@ process GENOTYPE_GVCF {
         path("HC_${chrom}.vcf.gz.tbi"), emit: tbi
     script:
     """
-    gatk --java-options "${GLOBAL_JAVA_OPTS}" HaplotypeCaller \
+    gatk --java-options "${GLOBAL_JAVA_OPTS}" GenotypeGVCFs \
         -R ${fasta} \
         -V gendb://${gendb} \
         -L ${chrom} \

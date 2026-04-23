@@ -56,10 +56,11 @@ workflow hc_workflow {
 
         chr_chroms = Channel.of((1..22).collect { "chr${it}" } + ["chrX", "chrY"]).flatten()
         
-        chr_genomicsdb_vcf = chr_chroms.combine(ch_input_vcf.collect())
-        chr_genomicsdb_tbi = chr_chroms.combine(ch_input_tbi.collect())
+        chr_genomicsdb_vcf = ch_input_vcf.collect()
+        chr_genomicsdb_tbi = ch_input_tbi.collect()
 
-        ch_db = GENOMICSDB_IMPORT(chr_genomicsdb_vcf, 
+        ch_db = GENOMICSDB_IMPORT(chr_chroms,
+                                    chr_genomicsdb_vcf, 
                                     chr_genomicsdb_tbi,
                                     ch_fasta)
 
