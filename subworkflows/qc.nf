@@ -1,4 +1,4 @@
-include { FASTP_PROCESSING; FASTP_STREAM; FASTQC; MOSDEPTH; MOSDEPTH_EXOME } from '../modules/seqQC.nf'
+include { FASTP_PROCESSING; FASTQC; MOSDEPTH; MOSDEPTH_EXOME } from '../modules/seqQC.nf'
 
 // ==========================
 // QC WORKFLOW
@@ -19,18 +19,6 @@ workflow fastq_QC_workflow {
         fastq   = FASTP_PROCESSING.out.fastq_filtered
         fastp   = FASTP_PROCESSING.out.fastp_log
         fastqc  = FASTQC.out
-}
-
-workflow nist_streaming_QC_workflow {
-    take:
-        ch_nist_urls
-
-    main:
-        FASTP_STREAM(ch_nist_urls)
-        
-    emit:
-        fastq  = FASTP_STREAM.out.fastq_filtered
-        fastp  = FASTP_STREAM.out.fastp_log
 }
 
 workflow mosdepth_workflow {

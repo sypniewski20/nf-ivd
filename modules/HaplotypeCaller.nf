@@ -161,12 +161,12 @@ process COLLECT_AND_VARIANT_FILTERING {
 
     gatk VariantFiltration \
         -R ${fasta} \
-        -V ${vcf} \
+        -V HC_raw.vcf.gz \
         --filter-expression "QD < 2.0 || FS > 60.0 || MQ < 40.0 || SOR > 3.0" \
         --filter-name "GATK_HARD_FILTER" \
         -O HC_raw_tagged.vcf.gz
 
-    bcftools norm -a --atom-overlaps . -m - -f ${fasta} HC_temp_tagged.vcf.gz -Ou | \
+    bcftools norm -a --atom-overlaps . -m - -f ${fasta} HC_raw_tagged.vcf.gz -Ou | \
     bcftools view -f PASS -Ou | \
     bcftools annotate --set-id +'%CHROM\\_%POS\\_%REF\\_%ALT' -Ou | \
     bcftools +fill-tags -Ou -- -t AF,AC | \

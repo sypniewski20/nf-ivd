@@ -21,31 +21,6 @@ process FASTP_PROCESSING {
 		"""
 }
 
-process FASTP_STREAM {
-	publishDir "${params.outfolder}/${params.runID}/fastp/${sample}", pattern: "fastp.*", mode: 'copy', overwrite: true
-    tag "${sample}_${ID}"
-	label 'gatk'
-    label 'tiny'
-    input:
-		tuple val(sample), val(ID), val(LB), val(PL), val(PU), path(R1_URL), path(R2_URL)
-    output:
-        tuple val(sample), val(ID), val(LB), val(PL), val(PU), path("${sample}_${ID}_R1_fastp.fq.gz"), path("${sample}_${ID}_R2_fastp.fq.gz"), emit: fastq_filtered
-		tuple path("${sample}_${ID}_fastp.html"), path("${sample}_${ID}_fastp.json"), emit: fastp_log
-    script:
-        """
-
-        fastp -i <(curl -sL "${R1_URL}") \
-              -I <(curl -sL "${R2_URL}") \
-              -o ${sample}_${ID}_R1_fastp.fq.gz \
-              -O ${sample}_${ID}_R2_fastp.fq.gz \
-              -w ${task.cpus} \
-			  --html ${sample}_${ID}_fastp.html \
-			  --json ${sample}_${ID}_fastp.json \
-              --detect_adapter_for_pe
-			  
-        """
-}
-
 process MOSDEPTH {
 	publishDir "${params.outfolder}/${params.runID}/BAMQC", mode: 'copy', overwrite: true
 	tag "${sample}"

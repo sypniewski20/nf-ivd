@@ -1,8 +1,7 @@
-include { DRAGMAP_BAM } from '../modules/mapping.nf'
+include { DRAGMAP_BAM; DRAGMAP_STREAM_BAM; MERGE_BAM } from '../modules/mapping.nf'
 
-// ==========================
-// MULTIQC
-// ==========================
+def run_modes = params.run_mode?.split(',')*.trim()
+
 workflow dragmap_workflow {
 
     take:
@@ -15,12 +14,28 @@ workflow dragmap_workflow {
         file("${params.fasta}.fai")
         ])
 
-        DRAGMAP_BAM(ch_fq, ch_fasta)
+        if ('calibration' in run_modes) {
+
+        ch_mapping = DRAGMAP_STREAM_BAM(ch_fq, ch_fasta)
+
+        ch_grouped = ch_mapping
+            .groupTuple()
+
+        bams = ch_grouped.map { sample, lbs, bam, bai -> tuple(sample, lbs, bam) }
+        bais = ch_grouped.map { sample, lbs, bam, bai -> tuple(sample, lbs, bai) }
+
+        ch_bam_output = MERGE_BAM(bams, bais)
+
+        } else {
+
+            ch_bam_output = DRAGMAP_BAM(ch_fq, ch_fasta)
+
+        }
     
     emit:
 
         // standardised outputs
-        ch_bam       = DRAGMAP_BAM.out.ch_bam
-        ch_flagstat  = DRAGMAP_BAM.out.ch_flagstat
-        ch_md5       = DRAGMAP_BAM.out.ch_md5
+        ch_bam       = ch_bam_output.ch_bam
+        ch_flagstat  = ch_bam_output.ch_flagstat
+        ch_md5       = ch_bam_output.ch_md5
 }

@@ -8,12 +8,14 @@ nextflow.enable.dsl = 2
 
 include { Read_samplesheet; Read_bam }      from './modules/functions.nf'
 include { dragmap_workflow }      from './subworkflows/mapping.nf' 
-include { fastq_QC_workflow; nist_streaming_QC_workflow; mosdepth_workflow }     from './subworkflows/qc.nf'
+include { fastq_QC_workflow; mosdepth_workflow }     from './subworkflows/qc.nf'
 include { multiqc_workflow }      from './subworkflows/multiqc.nf'
 include { hc_workflow }           from './subworkflows/HC.nf'
 include { manta_workflow }        from './subworkflows/manta.nf'
 include { gCNV_workflow }         from './subworkflows/gCNV.nf'
 include { germline_calibration_workflow }  from './subworkflows/calibration.nf'
+
+def run_modes = params.run_mode?.split(',')*.trim()
 
 workflow {
 
@@ -26,18 +28,14 @@ workflow {
     if (params.input_type == 'fastq') {
         
         // --- NEW LOGIC FOR CALIBRATION / STREAMING MODE ---
-        if (params.run_mode == 'calibration') {
+        if ('calibration' in run_modes) {
             // 1. Parse the NIST-style samplesheet (URLs + MD5 as RGID)
             ch_raw_stream = Read_samplesheet(params.samplesheet)
 
             // 2. Stream through FASTP (Input: URLs -> Output: Local Filtered Chunks)
-            nist_streaming_QC_workflow(ch_raw_stream)
 
             // 4. Align grouped chunks into single Sample BAMs
-            mapping_results = dragmap_workflow(ch_grouped_to_map)
-            
-            // Collect QC from streaming fastp
-            qc_results = nist_streaming_QC_workflow.out.fastp
+            mapping_results = dragmap_workflow(ch_raw_stream)
 
         } else {
             // --- STANDARD LOCAL FASTQ MODE ---
@@ -46,7 +44,7 @@ workflow {
 
             filtered_fq = ch_fq_qc.fastq
             qc_results = ch_fq_qc.fastp
-            fastqc_reports = ch_fq_qc.fastqc
+            ch_fastqc_reports = ch_fq_qc.fastqc
 
             mapping_results = dragmap_workflow(filtered_fq)
         }
@@ -67,13 +65,11 @@ workflow {
     ch_final_vcf = Channel.empty()
     ch_final_stats = Channel.empty()
 
-    def run_modes = params.run_mode?.split(',')*.trim()
-
     hc_results = null
 
     if ('HC' in run_modes || 'calibration' in run_modes) {
+        
         hc_results = hc_workflow(ch_bam)
-
         ch_final_vcf = hc_results.hc_vcf
         ch_vcf_stats = hc_results.stats
         
@@ -87,16 +83,16 @@ workflow {
 
     if ('calibration' in run_modes) {
 
-        cal_results = germline_calibration_workflow(hc_results.hc_vcf)
+        germline_calibration_workflow(hc_results.hc_vcf)
 
     }
 
     // 3. FINAL QC & REPORTING
 
     multiqc_workflow(
-        ch_fastqc_reports,
-        ch_mapping_stats, 
-        ch_mosdepth,
-        ch_vcf_stats
+        ch_fastqc_reports.ifEmpty([]),
+        ch_mapping_stats.ifEmpty([]), 
+        ch_mosdepth.ifEmpty([]),
+        ch_vcf_stats.ifEmpty([])
     )
 }
