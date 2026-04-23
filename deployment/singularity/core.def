@@ -27,7 +27,22 @@ From: mambaorg/micromamba:1.5.8
         coreutils \
         procps \
         openjdk-17-jdk \
-        libgomp1
+        cmake \
+        g++ \
+        gcc \
+        libboost-all-dev \
+        libz-dev \
+        libbz2-dev \
+        liblzma-dev \
+        libgtest-dev \
+        googletest \
+        libc6 \
+        libgomp1 \
+        zlib1g \
+        libnss3 \
+        libgcc-s1 \
+        libblas3 \
+        liblapack3
 
 
     mkdir -p /opt/envs /opt/build
@@ -69,6 +84,30 @@ From: mambaorg/micromamba:1.5.8
 
     ln -s /opt/tools/gatk/gatk-${GATK_VERSION}/gatk /usr/local/bin/gatk
     gatk --version
+
+    ########################################################
+    # 4. DRAGMAP (external, SHA pinned)
+    ########################################################
+    DRAGMAP_VERSION=1.3.0
+    DRAGMAP_URL="https://github.com/Illumina/DRAGMAP/archive/refs/tags/${DRAGMAP_VERSION}.zip"
+    DRAGMAP_SHA256="cabddaa6a57967101fab2c65eab0ce04226359c7926c34c536326eba893246d3"
+    mkdir -p /opt/tools/dragmap
+    cd /opt/tools/dragmap
+
+    wget -q -O dragmap.zip "${DRAGMAP_URL}"
+    echo "${DRAGMAP_SHA256}  dragmap.zip" | sha256sum -c -
+
+    unzip -q dragmap.zip
+    rm -f dragmap.zip
+
+    cd DRAGMAP-${DRAGMAP_VERSION}
+
+    make DRAGEN_OS_VERSION="${DRAGMAP_VERSION}" \
+         CFLAGS="-Wno-error=format-overflow" \
+         CXXFLAGS="-Wno-error=format-overflow"
+
+    ln -s /opt/tools/dragmap/DRAGMAP-${DRAGMAP_VERSION}/build/release/dragen-os /usr/local/bin/dragen-os
+    dragen-os --help
 
 ########################################################
 # ENVIRONMENT

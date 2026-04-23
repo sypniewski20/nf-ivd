@@ -60,8 +60,8 @@ workflow {
         mosdepth_results = mosdepth_workflow(mapping_results.ch_bam)
         
         ch_bam           = mapping_results.ch_bam
-        ch_mapping_stats = mapping_results.ch_flagstat
-        ch_mosdepth      = mosdepth_results.ch_mosdepth
+        ch_mapping_stats = mapping_results.ch_flagstat.collect()
+        ch_mosdepth      = mosdepth_results.ch_mosdepth.collect()
 
     } else if (params.input_type == 'bam') {
         ch_bam = Read_bam(params.samplesheet)
@@ -79,19 +79,15 @@ workflow {
     if ('HC' in run_modes || 'calibration' in run_modes) {
         hc_results = hc_workflow(ch_bam)
 
-        if ('HC' in run_modes) {
-            ch_final_vcf = ch_final_vcf.mix(hc_results.hc_vcf)
-            ch_final_stats = ch_final_stats.mix(hc_results.stats)
-        }
+        ch_final_vcf = hc_results.hc_vcf
+        ch_vcf_stats = hc_results.stats
+        
     }
 
     if ('SV' in run_modes) {
-        manta_results = manta_workflow(ch_bam)
-        gcnv_results = gCNV_workflow(ch_bam)
+        manta_workflow(ch_bam)
+        gCNV_workflow(ch_bam)
 
-        ch_final_vcf = ch_final_vcf.mix(manta_results.vcf)
-        // optionally:
-        // ch_final_vcf = ch_final_vcf.mix(gcnv_results.vcf)
     }
 
     if ('calibration' in run_modes) {
@@ -103,11 +99,11 @@ workflow {
     }
 
     // 3. FINAL QC & REPORTING
-    // We mix the mapping stats with any tool-specific stats
+
     multiqc_workflow(
-        ch_fastqc_reports.collect().ifEmpty([]),
-        ch_mapping_stats.collect().ifEmpty([]), 
-        ch_mosdepth.collect().ifEmpty([]),
-        ch_final_stats.collect().ifEmpty([])
+        ch_fastqc_reports,
+        ch_mapping_stats, 
+        ch_mosdepth,
+        ch_vcf_stats
     )
 }

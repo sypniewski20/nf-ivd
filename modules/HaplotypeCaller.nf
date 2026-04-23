@@ -3,11 +3,14 @@
 // DRAGEN-MODE + DRAGSTR (WES & WGS VERSIONS)
 // ============================================================
 
-def GATK_GLOBAL_ARGS = """
---dragen-mode true \
+def GATK_GLOBAL_ARGS = "--dragen-mode true \
 --native-pair-hmm-threads 16 \
---standard-min-confidence-threshold-for-calling 20
-"""
+--standard-min-confidence-threshold-for-calling 20"
+
+def GLOBAL_JAVA_OPTS = "-Xmx32g -XX:+UseParallelGC -XX:ParallelGCThreads=16"
+
+def padding = (params.seq_type == 'WES') ? params.interval_padding : 0
+
 
 // ------------------------------------------------------------
 // 1. CALIBRATION (DRAGSTR)
@@ -29,7 +32,6 @@ process CALIBRATE_DRAGSTR_MODEL {
         tuple val(sample), path("${sample}_dragstr_model.txt")
 
     script:
-        def padding = (params.seq_type == 'WES') ? params.interval_padding : 0
     """
     gatk CalibrateDragstrModel \
         -R ${fasta} \
@@ -53,17 +55,16 @@ process GVCF_HAPLOTYPE_CALLER {
 
     input:
         tuple val(sample), path(bam), path(bai), path(dragstr)
-        tuple path(fasta), path(fai), path(fasta_dict)
+        tuple path(fasta), path(fai), path(fasta_dict), path(str_table)
         path(bed)
         val(interval_padding)
 
     output:
-        tuple val(sample), path("${sample}.g.vcf.gz"), emit: vcf
-        tuple val(sample), path("${sample}.g.vcf.gz.tbi"), emit: tbi
+        path("${sample}.g.vcf.gz"), emit: vcf
+        path("${sample}.g.vcf.gz.tbi"), emit: tbi
     script:
-        def padding = (params.seq_type == 'WES') ? params.interval_padding : 0
     """
-    gatk --java-options "-Xmx32g" HaplotypeCaller \
+    gatk --java-options "${GLOBAL_JAVA_OPTS}" HaplotypeCaller \
         -R ${fasta} \
         -I ${bam} \
         -O ${sample}.g.vcf.gz \
@@ -71,9 +72,10 @@ process GVCF_HAPLOTYPE_CALLER {
         --interval-set-rule INTERSECTION \
         --interval-padding ${padding} \
         --dragstr-params-path ${dragstr} \
+        --smith-waterman FASTEST_AVAILABLE \
         ${GATK_GLOBAL_ARGS} \
         -ERC GVCF
-    """
+        """
 }
 
 // ------------------------------------------------------------
@@ -83,49 +85,50 @@ process GVCF_HAPLOTYPE_CALLER {
 process GENOMICSDB_IMPORT {
     label 'xlarge'
     label 'gatk'
-
+    tag "${chrom}"
     input:
-        path(gvcfs)
-        path(tbis)
-        tuple path(fasta), path(fai), path(fasta_dict)
-        path(bed)
+        tuple val(chrom), path(vcfs)
+        tuple val(chrom), path(tbis)
+        tuple path(fasta), path(fai), path(fasta_dict), path(str_table)
 
     output:
-        path("genomics_db")
+        tuple val(chrom), path("genomics_db")
 
     script:
-        def input_files = gvcfs.collect { "-V $it" }.join(' ')
+    def input_files = gvcfs.collect { "-V $it" }.join(' ')
     """
-
-    gatk --java-options "-Xmx32g -Xms32g" GenomicsDBImport \
-        --genomicsdb-workspace-path genomics_db \
+    
+    gatk --java-options "${GLOBAL_JAVA_OPTS}" HaplotypeCaller \
+        GenomicsDBImport \
+        --genomicsdb-workspace-path genomicsdb_${chrom} \
         -R ${fasta} \
-        -L ${bed} \
+        -L ${chrom} \
         ${input_files} \
-        --tmp-dir . 
+        --tmp-dir . \
+        --batch-size ${gvcfs.size()} \
+        --bypass-feature-reader
+        
     """
 }
 
 process GENOTYPE_GVCF {
     label 'large'
     label 'gatk'
-
+    tag "${chrom}"
     input:
-        path(gendb)
-        tuple path(fasta), path(fai), path(fasta_dict)
-        path(bed)
+        tuple val(chrom), path(gendb)
+        tuple path(fasta), path(fai), path(fasta_dict), path(str_table)
 
     output:
-        tuple path("HC_joint.vcf.gz"), path("HC_joint.vcf.gz.tbi")
+        path("HC_${chrom}.vcf.gz"), emit: vcf
+        path("HC_${chrom}.vcf.gz.tbi"), emit: tbi
     script:
     """
-    gatk --java-options "-Xmx16g" GenotypeGVCFs \
+    gatk --java-options "${GLOBAL_JAVA_OPTS}" HaplotypeCaller \
         -R ${fasta} \
         -V gendb://${gendb} \
-        -L ${bed} \
-        -O HC_joint.vcf.gz
-
-    tabix -p vcf HC_joint.vcf.gz
+        -L ${chrom} \
+        -O HC_${chrom}.vcf.gz
     """
 }
 
@@ -133,36 +136,45 @@ process GENOTYPE_GVCF {
 // 4. GATHER & FILTERING
 // ------------------------------------------------------------
 
-process VARIANT_FILTERING {
+process COLLECT_AND_VARIANT_FILTERING {
     label 'medium'
     label 'gatk'
     publishDir "${params.outfolder}/${params.runID}/HC/filtered", mode: 'copy'
 
     input:
-        tuple path(vcf), path(tbi)
-        tuple path(fasta), path(fai), path(fasta_dict)
+        path(vcf)
+        path(tbi)
+        tuple path(fasta), path(fai), path(fasta_dict), path(str_table)
     output:
         path("HC_filtered_norm.vcf.gz"), emit: vcf
         path("HC_filtered_norm.vcf.gz.tbi"), emit: tbi
         path("HC_filtered_norm.vcf.gz.stats"), emit: stats
         path("HC_filtered_norm.vcf.gz.md5"), emit: md5
+        path("HC_raw_tagged.vcf.gz"), emit: raw_vcf
+        path("HC_raw_tagged.vcf.gz.tbi"), emit: raw_tbi
+
     script:
     """
     
+    bcftools concat -a -Oz -o HC_raw.vcf.gz ${vcf}
+    tabix -p vcf HC_raw.vcf.gz
+
     gatk VariantFiltration \
         -R ${fasta} \
         -V ${vcf} \
         --filter-expression "QD < 2.0 || FS > 60.0 || MQ < 40.0 || SOR > 3.0" \
         --filter-name "GATK_HARD_FILTER" \
-        -O - | \
-    bcftools norm -a --atom-overlaps . -m - -f ${fasta} -Ou | \
+        -O HC_raw_tagged.vcf.gz
+
+    bcftools norm -a --atom-overlaps . -m - -f ${fasta} HC_temp_tagged.vcf.gz -Ou | \
+    bcftools view -f PASS -Ou | \
     bcftools annotate --set-id +'%CHROM\\_%POS\\_%REF\\_%ALT' -Ou | \
     bcftools +fill-tags -Ou -- -t AF,AC | \
     bcftools sort -Oz -o HC_filtered_norm.vcf.gz
 
     tabix -p vcf HC_filtered_norm.vcf.gz
 
-    bcftools stat HC_filtered_norm.vcf.gz > HC_filtered_norm.vcf.gz.stats
+    bcftools stats HC_filtered_norm.vcf.gz > HC_filtered_norm.vcf.gz.stats
     md5sum HC_filtered_norm.vcf.gz > HC_filtered_norm.vcf.gz.md5
 
     """
@@ -210,7 +222,7 @@ process HAPLOTYPE_CALLER_EXTRACT_GT {
     """
     gatk VariantsToTable \
         -V ${vcf} \
-        -F CHROM -F POS -F ID -F REF -F ALT -GF GT -GF AD -GF DP -GF GQ \
+        -F CHROM -F POS -F ID -F REF -F ALT -GF GT -GF DP \
         -O ${vcf.baseName}_gt.table
 
     md5sum ${vcf.baseName}_gt.table > ${vcf.baseName}_gt.table.md5

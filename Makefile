@@ -67,7 +67,7 @@ truth:
 	$(RSCRIPT) scripts/download_and_verify.R --manifest $(TRUTH_MANIFEST) --dir $(TRUTH_DIR) --snapshot_dir $(TRUTH_DIR)
 
 fasta:
-	$(RSCRIPT) scripts/download_and_verify.R --manifest $(FASTA_MANIFEST) --dir $(FASTA_DIR) --snapshot_dir $(FASTA_DIR)
+	$(RSCRIPT) deployment/scripts/download_and_verify.R --manifest $(FASTA_MANIFEST) --dir $(FASTA_DIR) --snapshot_dir $(FASTA_DIR)
 
 	# Build the hash table for the reference FASTA file
 	$(SINGULARITY) run $(CORE_SIF) dragen-os --build-hash-table true \
@@ -93,7 +93,7 @@ add_resources:
 
 # ── Reads (manual step — too large for default pipeline) ─────────────────────
 data:
-	scripts/ashkenazim_trio_download.sh ${READS_DIR}
+	deployment/scripts/ashkenazim_trio_download.sh ${READS_DIR}
 
 # ── Clean ─────────────────────────────────────────────────────────────────────
 clean:

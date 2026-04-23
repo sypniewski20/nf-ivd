@@ -7,7 +7,7 @@ include {
     GVCF_HAPLOTYPE_CALLER;
     GENOMICSDB_IMPORT;
     GENOTYPE_GVCF;
-    VARIANT_FILTERING;
+    COLLECT_AND_VARIANT_FILTERING;
     CALCULATE_POSTERIORS;
     HAPLOTYPE_CALLER_EXTRACT_GT
 } from "../modules/HaplotypeCaller.nf"
@@ -53,15 +53,21 @@ workflow hc_workflow {
         ch_input_vcf = ch_gvcfs_out.vcf.collect()
         ch_input_tbi = ch_gvcfs_out.tbi.collect()
 
-        ch_db = GENOMICSDB_IMPORT(
-            ch_input_vcf, 
-            ch_input_tbi, 
-            ch_fasta, 
-            file(params.bed))
+        chr_chroms = Channel.of((1..22).collect { "chr${it}" } + ["chrX", "chrY"]).flatten()
+        
+        chr_genomicsdb_vcf = chr_chroms.combine(ch_input_vcf.collect())
+        chr_genomicsdb_tbi = chr_chroms.combine(ch_input_tbi.collect())
 
-        ch_raw_vcf = GENOTYPE_GVCF(ch_db, ch_fasta, file(params.bed))
+        ch_db = GENOMICSDB_IMPORT(chr_genomicsdb_vcf, 
+                                    chr_genomicsdb_tbi,
+                                    ch_fasta)
 
-        ch_filtered = VARIANT_FILTERING(ch_raw_vcf, ch_fasta)
+        ch_raw_vcf = GENOTYPE_GVCF(ch_db, ch_fasta)
+
+        ch_filtered = COLLECT_AND_VARIANT_FILTERING(
+                                    ch_raw_vcf.vcf.collect(), 
+                                    ch_raw_vcf.tbi.collect(),
+                                    ch_fasta)
 
         if (params.pedigree) {
             ch_post = CALCULATE_POSTERIORS(
