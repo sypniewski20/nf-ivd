@@ -13,13 +13,22 @@ workflow annotation_workflow {
             ])
 
 
-        SPLICE_AI(ch_vcf,
-                  ch_tbi,
-                  ch_fasta)
+        if (params.seq_type != "WES") {
+            SPLICE_AI(ch_vcf, ch_tbi, ch_fasta)
+            ch_spliceai_out = SPLICE_AI.out
+        } else {
+            ch_spliceai_out = Channel.value([file('NO_FILE_VCF'), file('NO_FILE_TBI')])
+        }
 
-        VEP_GERMLINE_SNV(ch_vcf, 
+        ch_dbnsfp = Channel.value([
+            file(params.dbnsfp),
+            file("${params.dbnsfp}.tbi")
+            ])
+
+        VEP_GERMLINE_SNV(ch_vcf,
                 ch_tbi,
-                SPLICE_AI.out,
+                ch_spliceai_out,
+                ch_dbnsfp,
                 ch_fasta
                 )
         

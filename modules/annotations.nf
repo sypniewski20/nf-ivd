@@ -38,8 +38,9 @@ process VEP_GERMLINE_SNV {
 
     input:
         path(vcf)
-        path(tbi)                                      // staged for co-location only
+        path(tbi)
         tuple path(spliceai_vcf), path(spliceai_tbi)
+        tuple path(dbnsfp), path(dbnsfp_tbi)
         tuple path(fasta), path(fai)
 
     output:
@@ -50,8 +51,11 @@ process VEP_GERMLINE_SNV {
         def clinvar = params.clinvar
             ? "--custom file=${params.clinvar},short_name=ClinVar,format=vcf,type=exact,coords=0,fields=CLNSIG%CLNREVSTAT%CLNDN%MC%CLNDISDB%CLNDISDBINC"
             : ""
-        def dbNSFP  = params.dbNSFP
-            ? "--plugin dbNSFP,${params.dbNSFP},MetaRNN,AlphaMissense,MANE,VEP_canonical,gnomAD4.1_joint_NFE_AF,gnomAD4.1_joint_AF"
+        def dbNSFP  = params.dbnsfp
+            ? "--plugin dbNSFP,${params.dbnsfp},,SIFT_score,SIFT_pred,Polyphen2_HVAR_score,Polyphen2_HVAR_pred,MutationTaster_score,MutationTaster_pred,MetaRNN_score,MetaRNN_pred,REVEL_score,BayesDel_addAF_score,BayesDel_addAF_pred,BayesDel_noAF_score,BayesDel_noAF_pred,ClinPred_score,ClinPred_pred,AlphaMissense_score,AlphaMissense_pred,CADD_raw,CADD_phred,GERP++_RS,phyloP100way_vertebrate,gnomAD4.1_joint_NFE_AF,gnomAD4.1_joint_AF"
+            : ""
+        def spliceai = (params.seq_type != 'WES' && spliceai_vcf.name != 'NO_FILE_VCF')
+            ? "--custom file=${spliceai_vcf},short_name=SpliceAI,format=vcf,type=overlap,coords=0,fields=ALLELE%SYMBOL%DS_AG%DS_AL%DS_DG%DS_DL"
             : ""
         """
         vep \
@@ -78,12 +82,12 @@ process VEP_GERMLINE_SNV {
             --biotype \
             --uniprot \
             --variant_class \
-            --custom file=${spliceai_vcf},short_name=SpliceAI,format=vcf,type=overlap,coords=0,fields=ALLELE%SYMBOL%DS_AG%DS_AL%DS_DG%DS_DL \
+            ${spliceai} \
             ${clinvar} \
             ${dbNSFP} \
             --offline \
             --cache_version ${params.cache_version} \
-            --flag_pick \
+            --pick \
             --pick_order mane_select,mane_plus_clinical,canonical,tsl,biotype,rank
         """
 }

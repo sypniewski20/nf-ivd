@@ -1,3 +1,8 @@
+########################################################
+# BUILD-TIME FILES
+########################################################
+
+
 Bootstrap: docker
 From: mambaorg/micromamba:1.5.8
 
@@ -12,35 +17,12 @@ From: mambaorg/micromamba:1.5.8
 ########################################################
 %post
     set -e
+    cd /
 
-    apt-get update && apt-get install -y \
-        bash \
-        curl \
-        wget \
-        unzip \
-        ca-certificates \
-        bzip2 \
-        coreutils \
-        procps \
-        openjdk-17-jdk \
-        cmake \
-        g++ \
-        gcc \
-        libboost-all-dev \
-        libjemalloc-dev \
-        libz-dev \
-        libbz2-dev \
-        liblzma-dev \
-        libgtest-dev \
-        googletest \
-        libc6 \
-        libgomp1 \
-        zlib1g \
-        libnss3 \
-        libgcc-s1 \
-        libblas3 \
-        liblapack3
+    export DEBIAN_FRONTEND=noninteractive
+    export MAMBA_ROOT_PREFIX=/opt/micromamba
 
+    apt-get update && apt-get install -y procps
 
     mkdir -p /opt/envs /opt/build
 
@@ -59,83 +41,13 @@ From: mambaorg/micromamba:1.5.8
     ########################################################
     echo "[INFO] Installing environment from lock file"
 
-    conda-lock install -p /opt/envs/tools /opt/build/core_lock.yml
+    conda-lock install -p /opt/envs/core /opt/build/core_lock.yml
 
     micromamba clean -a -y
-
-    ########################################################
-    # 3. GATK (external, SHA pinned)
-    ########################################################
-    GATK_VERSION=4.6.1.0
-    GATK_URL="https://github.com/broadinstitute/gatk/releases/download/${GATK_VERSION}/gatk-${GATK_VERSION}.zip"
-    GATK_SHA256="ac7015c3f0ef1852745ca0ef647adbf8ddef5db63ab485b00bc1ffe654814155"
-
-    mkdir -p /opt/tools/gatk
-    cd /opt/tools/gatk
-
-    wget -q -O gatk.zip "${GATK_URL}"
-    echo "${GATK_SHA256}  gatk.zip" | sha256sum -c -
-
-    unzip -q gatk.zip
-    rm -f gatk.zip
-
-    ln -s /opt/tools/gatk/gatk-${GATK_VERSION}/gatk /usr/local/bin/gatk
-    gatk --version
-
-    ########################################################
-    # 5. DRAGMAP (external, SHA pinned)
-    ########################################################
-    DRAGMAP_VERSION=1.3.0
-    DRAGMAP_URL="https://github.com/Illumina/DRAGMAP/archive/refs/tags/${DRAGMAP_VERSION}.zip"
-    DRAGMAP_SHA256="cabddaa6a57967101fab2c65eab0ce04226359c7926c34c536326eba893246d3"
-    mkdir -p /opt/tools/dragmap
-    cd /opt/tools/dragmap
-
-    wget -q -O dragmap.zip "${DRAGMAP_URL}"
-    echo "${DRAGMAP_SHA256}  dragmap.zip" | sha256sum -c -
-
-    unzip -q dragmap.zip
-    rm -f dragmap.zip
-
-    cd DRAGMAP-${DRAGMAP_VERSION}
-
-    make DRAGEN_OS_VERSION="${DRAGMAP_VERSION}" \
-         CFLAGS="-Wno-error=format-overflow" \
-         CXXFLAGS="-Wno-error=format-overflow"
-
-    ln -s /opt/tools/dragmap/DRAGMAP-${DRAGMAP_VERSION}/build/release/dragen-os /usr/local/bin/dragen-os
-    dragen-os --help
-
-    ########################################################
-    # 6. BWA (external, SHA pinned)
-    ########################################################
-    BWA_VERSION=0.7.19
-    BWA_URL="https://github.com/lh3/bwa/archive/refs/tags/v${BWA_VERSION}.zip"
-    BWA_SHA256="5617d3291707260ca91e44980e419e9d2fc0fdbc6cdfa9a8f4c04a7c14531c57"
-    mkdir -p /opt/tools/bwa
-    cd /opt/tools/bwa
-
-    wget -q -O bwa.zip "${BWA_URL}"
-    echo "${BWA_SHA256}  bwa.zip" | sha256sum -c -
-
-    unzip -q bwa.zip
-    rm -f bwa.zip
-
-    cd bwa-${BWA_VERSION}
-    make
-    ln -s /opt/tools/bwa/bwa-${BWA_VERSION}/bwa /usr/local/bin/bwa
 
 ########################################################
 # ENVIRONMENT
 ########################################################
 %environment
-    export PATH=/opt/envs/tools/bin:/usr/local/bin:$PATH
-    export XDG_CACHE_HOME=/tmp/.cache
-    export HOME=/tmp
-    export MPLCONFIGDIR=/tmp/.config/matplotlib
-
-########################################################
-# METADATA
-########################################################
-%labels
-    Purpose Core alignment stack (micromamba env.yml + conda-lock audit + GATK external)
+    export PATH=/opt/envs/core/bin:$PATH
+    export PATH=/usr/local/bin:$PATH

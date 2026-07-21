@@ -11,5 +11,8 @@ dependencies:
   - glnexus=1.4.1
   - pip
   - fastprogress=1.0.3
+  - gatk4
+  - bwa
+  - dragmap
 platforms:
   - linux-64

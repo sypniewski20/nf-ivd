@@ -1,6 +1,6 @@
 process DRAGMAP_BAM {
     tag "${sample}"
-    label 'gatk'
+    label 'core'
     label 'xlarge'
     input:
         // tuple contains: sample name, Library ID (LB), Platform (PL), and FASTQ paths
@@ -37,7 +37,7 @@ process DRAGMAP_BAM {
 
 process BWA_BAM {
     tag "${sample}"
-    label 'gatk'
+    label 'core'
     label 'xlarge'
     input:
         tuple val(sample), val(ID), val(LB), val(PL), val(PU), path(read_1), path(read_2)
@@ -71,7 +71,7 @@ process BWA_BAM {
 process MARK_DUPLICATES {
     publishDir "${params.outfolder}/${params.runID}/BAM/${sample}", mode: 'copy', overwrite: true
     tag "${sample}"
-    label 'gatk'
+    label 'core'
     label 'xlarge'
     input:
         tuple val(sample), path(bam), path(bai)

@@ -1,5 +1,5 @@
 process EXCLUSION_BED {
-    label "gatk"
+    label "core"
     input:
         path bed
         tuple path(fasta), path(fai)
@@ -81,7 +81,6 @@ process DELLY_FILTER {
         path "delly_filtered.bcf.csi",  emit: csi
     script:
     """
-    # merge all genotyped BCFs into one multi-sample BCF
     bcftools merge \
         --merge none \
         --force-single \
@@ -90,7 +89,6 @@ process DELLY_FILTER {
         ${bcfs}
     bcftools index delly_cohort.bcf
 
-    # germline filter: require PASS in >= 75% of samples, min 3 reads support
     delly filter \
         -f germline \
         -o delly_filtered.bcf \

@@ -28,7 +28,6 @@ process DEEP_VARIANT {
 
 process GLNEXUS {
     publishDir "${params.outfolder}/${params.runID}/deep_variant", mode: 'copy', overwrite: true
-
     label 'core'
     label 'large'
 	input:
@@ -60,7 +59,7 @@ process GLNEXUS {
 
 process DV_EXTRACT_GT {
     label 'tiny'
-    label 'gatk'
+    label 'core'
     publishDir "${params.outfolder}/${params.runID}/deep_variant", mode: 'copy', overwrite: true
 
     input:
