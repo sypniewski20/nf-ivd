@@ -69,7 +69,12 @@ process BWA_BAM {
 }
 
 process MARK_DUPLICATES {
-    publishDir "${params.outfolder}/${params.runID}/BAM/${sample}", mode: 'copy', overwrite: true
+    publishDir "${params.outfolder}/${params.runID}/BAM",
+        mode: 'copy',
+        overwrite: true,
+        saveAs: { filename ->
+            "${sample}/${filename}"
+        }    
     tag "${sample}"
     label 'core'
     label 'xlarge'

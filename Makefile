@@ -26,11 +26,13 @@ DELLY_SIF := ${DEPLOYMENT_DIR}/singularity/sif/delly.sif
 CNVKIT_SIF := ${DEPLOYMENT_DIR}/singularity/sif/cnvkit.sif
 VEP_SIF := ${DEPLOYMENT_DIR}/singularity/sif/vep115.sif
 STR_SIF := ${DEPLOYMENT_DIR}/singularity/sif/str.sif
-SPLICEAI_SIF := deploment/singularity/sif/spliceai.sif
+SPLICEAI_SIF := ${DEPLOYMENT_DIR}/singularity/sif/spliceai.sif
 DEEP_VARIANT_SIF := ${DEPLOYMENT_DIR}/singularity/sif/deepvariant.sif
+DEEP_VARIANT_GPU_SIF := ${DEPLOYMENT_DIR}/singularity/sif/deepvariant_gpu.sif
 
 HAPPY_DOCKER := docker://mgibio/hap.py:v0.3.12
 DEEP_VARIANT_DOCKER := docker://google/deepvariant:1.5.0
+DEEP_VARIANT_GPU_DOCKER := docker://google/deepvariant:1.5.0-gpu
 
 # ── Fasta ───────────────────────────────────────────────────────
 
@@ -44,19 +46,20 @@ PON_1K_GENOMES := gs://gatk-best-practices/somatic-hg38/1000g_pon.hg38.vcf.gz
 BROAD_INTERVALS := https://storage.googleapis.com/gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.interval_list
 ENCODE_BLACKLIST := https://www.encodeproject.org/files/ENCFF356LFX/@@download/ENCFF356LFX.bed.gz
 UCSC_SEGDUPS := https://hgdownload.soe.ucsc.edu/goldenPath/hg38/database/genomicSuperDups.txt.gz
+CLINVAR := https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar.vcf.gz
 
 ########################################################
 
 .PHONY: all setup containers fasta add_resources benchmark_download run_benchmark
 
-all: setup data
+all: setup benchmark
 
 setup: containers fasta add_resources
 
 benchmark: benchmark_download run_benchmark
 
 # ── Containers ────────────────────────────────────────────────────────────────
-containers: $(CORE_SIF) $(QC_SIF) $(HAPPY_SIF) $(MANTA_SIF) $(DEEP_VARIANT_SIF) $(GLNEXUS_SIF) $(VEP_SIF)
+containers: $(CORE_SIF) $(QC_SIF) $(HAPPY_SIF) $(MANTA_SIF) $(DEEP_VARIANT_SIF) $(DEEP_VARIANT_GPU_SIF) $(GLNEXUS_SIF) $(VEP_SIF)
 
 $(CORE_SIF):
 	$(SINGULARITY) build --fakeroot $@ ${DEPLOYMENT_DIR}/singularity/def/core.def
@@ -88,6 +91,9 @@ $(SPLICEAI_SIF):
 $(DEEP_VARIANT_SIF):
 	$(SINGULARITY) build --disable-cache $@ $(DEEP_VARIANT_DOCKER)
 
+$(DEEP_VARIANT_GPU_SIF):
+	$(SINGULARITY) build --disable-cache $@ $(DEEP_VARIANT_GPU_DOCKER)
+
 # ── References ────────────────────────────────────────────────────────────────
 
 fasta:
@@ -114,6 +120,7 @@ add_resources:
 	$(WGET) -P ${ADD_RESOURCES} ${BROAD_INTERVALS}
 	$(WGET) -P ${ADD_RESOURCES} ${ENCODE_BLACKLIST}
 	$(WGET) -P ${ADD_RESOURCES} ${UCSC_SEGDUPS}
+	$(WGET) -P ${ADD_RESOURCES} ${CLINVAR}
 
 	# Refine intervals
 

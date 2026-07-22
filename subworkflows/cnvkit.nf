@@ -51,13 +51,14 @@ workflow cnvkit_workflow {
         CNVKIT_DIAGRAM(viz_ch)
         CNVKIT_TO_VCF(CNVKIT_CALL.out.cns)
 
-        vcf = CNVKIT_TO_VCF.out
-                            .map{ vcf, tbi -> vcf }
+        // Renamed variables to avoid shadowing the closure parameters
+        ch_vcf_list = CNVKIT_TO_VCF.out
+                            .map{ vcf_file, tbi_file -> vcf_file }
                             .collect()
-        tbi = CNVKIT_TO_VCF.out
-                            .map{ vcf, tbi -> tbi }
+                            
+        ch_tbi_list = CNVKIT_TO_VCF.out
+                            .map{ vcf_file, tbi_file -> tbi_file }
                             .collect()
 
-
-        MERGE_VCF(vcf, tbi)
+        MERGE_VCF(ch_vcf_list, ch_tbi_list)
 }
