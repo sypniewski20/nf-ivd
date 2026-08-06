@@ -31,12 +31,6 @@ A Nextflow DSL2 pipeline for **IVD-compliant germline variant calling** using GA
 - **Structural variant (SV)** detection via Manta and gCNV
 - **GIAB calibration mode** for benchmarking against NIST truth sets (HG002, HG003, HG004)
 
-### TO DO
-
-- **Tumor-only and tumor/normal calling with Mutect2 + SEQC2 benchmarking**
-- **VEP annotation**
-- **PacBio support (or separate repo?)**
-
 ---
 
 ## Pipeline Architecture
